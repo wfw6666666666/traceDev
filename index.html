@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="你的专属技术资源库 - 精选技术教程与资源下载" />
+
+  <!-- ⚡ 防闪烁主题初始化 -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      var theme = saved;
+      if (!theme) {
+        theme = window.matchMedia('(prefers-color-scheme: light)').matches
+          ? 'light'
+          : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 自定义样式 -->
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            neon: { blue: '#00d4ff', purple: '#7c3aed', cyan: '#06f7f7' },
+          },
+        },
+      },
+    };
+  </script>
+  <title>TraceDev · 技术资源库</title>
+</head>
+<body class="bg-[var(--bg-body)] text-[var(--text-primary)] font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- 环境光晕 -->
+  <div class="ambient-glow--top-left"></div>
+  <div class="ambient-glow--bottom-right"></div>
+
+  <!-- ==================== 顶部导航栏（含标签页） ==================== -->
+  <header id="navbar" class="fixed top-0 inset-x-0 z-50">
+    <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2">
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-2.5 shrink-0">
+        <img src="assets/logo.png" alt="TraceDev" class="h-8 w-auto" />
+        <span class="text-base font-bold tracking-tight text-[var(--text-primary)] hidden sm:inline">TraceDev</span>
+      </a>
+
+      <!-- 桌面端：标签页导航 -->
+      <div class="tab-scroll hidden md:flex flex-1 items-center justify-center mx-2">
+        <button class="tab-btn active" data-tab="videos"><i class="fa-solid fa-play mr-1.5"></i>教学视频</button>
+        <button class="tab-btn" data-tab="store"><i class="fa-solid fa-store mr-1.5"></i>咸鱼店铺</button>
+        <button class="tab-btn" data-tab="downloads"><i class="fa-solid fa-download mr-1.5"></i>资料下载</button>
+        <button class="tab-btn" data-tab="faq"><i class="fa-solid fa-circle-question mr-1.5"></i>疑难解答</button>
+        <button class="tab-btn" data-tab="about"><i class="fa-solid fa-user mr-1.5"></i>关于作者</button>
+      </div>
+
+      <!-- 右区 -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="theme-toggle" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text-secondary)] hover:text-neon-blue hover:bg-[var(--bg-social)] border border-[var(--border-default)] transition-all duration-300" aria-label="切换主题">
+          <i class="fa-regular fa-sun"></i>
+        </button>
+        <button id="menu-btn" class="md:hidden text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-lg" aria-label="菜单">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </nav>
+
+    <!-- 移动端下拉菜单（含标签页 + 主题切换） -->
+    <div id="mobile-menu" class="md:hidden">
+      <div class="flex flex-col px-4 pb-4 pt-2 gap-1 text-sm font-medium text-[var(--text-secondary)]">
+        <button class="tab-btn mobile-tab active" data-tab="videos"><i class="fa-solid fa-play mr-2"></i>教学视频</button>
+        <button class="tab-btn mobile-tab" data-tab="store"><i class="fa-solid fa-store mr-2"></i>咸鱼店铺</button>
+        <button class="tab-btn mobile-tab" data-tab="downloads"><i class="fa-solid fa-download mr-2"></i>资料下载</button>
+        <button class="tab-btn mobile-tab" data-tab="faq"><i class="fa-solid fa-circle-question mr-2"></i>疑难解答</button>
+        <button class="tab-btn mobile-tab" data-tab="about"><i class="fa-solid fa-user mr-2"></i>关于作者</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 内容面板 ==================== -->
+  <main class="flex-1 pt-16">
+
+    <!-- ─── 📺 教学视频 ─── -->
+    <section id="panel-videos" class="tab-panel active py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="video-grid">
+        <!-- 由 JS 动态填充 -->
+      </div>
+    </section>
+
+    <!-- ─── 🏪 咸鱼店铺 ─── -->
+    <section id="panel-store" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      <div class="flex flex-wrap justify-center gap-5" id="product-grid">
+        <!-- 由 JS 动态填充 -->
+      </div>
+    </section>
+
+    <!-- ─── 📦 资料下载 ─── -->
+    <section id="panel-downloads" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      <div class="flex flex-col lg:flex-row gap-6">
+        <!-- 左侧：下拉分类 -->
+        <div class="lg:w-48 shrink-0">
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-2 font-medium">分类筛选</label>
+          <div class="relative">
+            <select id="category-select" class="w-full appearance-none bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-primary)] rounded-lg px-4 py-2.5 pr-10 text-sm font-medium focus:outline-none focus:border-neon-blue/50 cursor-pointer transition-colors">
+              <!-- 由 JS 动态生成 -->
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--text-muted)]">
+              <i class="fa-solid fa-chevron-down text-xs"></i>
+            </div>
+          </div>
+        </div>
+        <!-- 右侧：卡片网格 -->
+        <div class="flex-1 min-w-0">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="resource-grid">
+            <!-- 由 JS 动态填充 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── ❓ 疑难解答 ─── -->
+    <section id="panel-faq" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto w-full">
+      <div id="faq-container" class="space-y-3">
+        <!-- 由 JS 动态填充 -->
+      </div>
+    </section>
+
+    <!-- ─── 👤 关于作者 ─── -->
+    <section id="panel-about" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto w-full">
+      <div id="about-container">
+        <!-- 由 JS 动态填充 -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== 页脚 ==================== -->
+  <footer class="py-8 px-4 mt-10">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
+      <p>&copy; 2024 TraceDev. All rights reserved.</p>
+      <p><span class="text-[var(--text-dim)]">备案号：</span><a href="#" class="hover:text-neon-blue transition-colors">鄂ICP备2024XXXXXXXX号-X</a></p>
+      <p><i class="fa-solid fa-envelope mr-1"></i><a href="javascript:void(0)" class="email-link hover:text-neon-blue transition-colors" data-email="3318234704@qq.com">3318234704@qq.com</a></p>
+    </div>
+  </footer>
+
+  <!-- ==================== 模态框（资料下载） ==================== -->
+  <div id="download-modal" class="fixed inset-0 z-[100] flex items-center justify-center px-4 hidden">
+    <div id="modal-overlay" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button id="modal-close" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl" aria-label="关闭">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 id="modal-title" class="text-xl font-bold text-[var(--text-primary)] mb-6">资源名称</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">百度网盘链接</label>
+          <div class="flex items-center gap-2">
+            <input id="modal-link" type="text" readonly value="https://pan.baidu.com/s/xxx" class="modal-input flex-1 bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:outline-none" />
+            <button class="copy-btn flex-shrink-0 px-3 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-copy-target="modal-link" title="复制链接"><i class="fa-regular fa-copy"></i></button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">提取码</label>
+          <div class="flex items-center gap-2">
+            <input id="modal-code" type="text" readonly value="提取码: abcd" class="modal-input flex-1 bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:outline-none" />
+            <button class="copy-btn flex-shrink-0 px-3 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-copy-target="modal-code" title="复制提取码"><i class="fa-regular fa-copy"></i></button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">解压密码</label>
+          <div class="flex items-center gap-2">
+            <input id="modal-password" type="text" readonly value="解压密码: techhub2024" class="modal-input flex-1 bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:outline-none" />
+            <button class="copy-btn flex-shrink-0 px-3 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-copy-target="modal-password" title="复制解压密码"><i class="fa-regular fa-copy"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 回到顶部 ==================== -->
+  <button id="back-to-top" aria-label="回到顶部"><i class="fa-solid fa-arrow-up"></i></button>
+
+  <!-- ==================== JavaScript ==================== -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

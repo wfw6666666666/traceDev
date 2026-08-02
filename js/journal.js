@@ -1,38 +1,64 @@
 /**
  * ============================================================
  *  TraceDev · 学习日志系统
- *  GitHub API 驱动 — 直接在网站上增删改，自动提交到仓库
- *  Token 仅保存在浏览器 localStorage，不上传任何服务器
+ *  密码登录 + GitHub API 在线编辑
+ *  密码哈希硬编码，Token 加密存 localStorage
  * ============================================================
  */
 (function () {
   'use strict';
 
-  // ── GitHub 配置 ───────────────────────────────────
+  // ── 密码哈希（SHA-256，仅用于验证，不暴露原始密码）──
+  const PASSWORD_HASH = 'ae5e0a47b9e4bb56f75ae9b2c351a9a71a13b32b7641d41f80ae9e23b045adf1';
   const GITHUB_API = 'https://api.github.com';
   const POSTS_PATH = 'data/posts.json';
   const DEFAULT_REPO = 'wfw6666666666/traceDev';
   const DEFAULT_BRANCH = 'master';
 
   // ── 状态 ──────────────────────────────────────────
-  let ghToken = null;        // GitHub Personal Access Token
-  let ghRepo = null;         // "owner/repo"
+  let ghToken = null;
+  let ghRepo = DEFAULT_REPO;
   let ghBranch = DEFAULT_BRANCH;
-  let postsSha = null;       // 文件 SHA（PUT 时必须）
+  let postsSha = null;
   let isAdmin = false;
   let posts = [];
   let editingPostId = null;
 
-  // ── DOM ───────────────────────────────────────────
   const $ = (sel) => document.querySelector(sel);
 
-  // ── Token & Auth ──────────────────────────────────
-  function loadToken() {
+  // ── SHA-256（浏览器原生）─────────────────────────
+  async function sha256(text) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ── 简单 XOR 加密/解密（用密码保护 Token）──────
+  function xorCrypt(text, key) {
+    const k = (key * (Math.ceil(text.length / key.length) + 1)).slice(0, text.length);
+    return text.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ k.charCodeAt(i))).join('');
+  }
+
+  function encryptWithPassword(plaintext, password) {
+    const xored = xorCrypt(plaintext, password);
+    return btoa(unescape(encodeURIComponent(xored)));
+  }
+
+  function decryptWithPassword(ciphertext, password) {
+    const xored = decodeURIComponent(escape(atob(ciphertext)));
+    return xorCrypt(xored, password);
+  }
+
+  // ── Token 管理 ────────────────────────────────────
+  function loadToken(password) {
     try {
-      const saved = JSON.parse(localStorage.getItem('tracedev_gh_auth') || '{}');
-      if (saved.token && saved.repo) {
-        ghToken = saved.token;
-        ghRepo = saved.repo;
+      const saved = JSON.parse(localStorage.getItem('tracedev_auth') || '{}');
+      if (saved.enc_token && password) {
+        const token = decryptWithPassword(saved.enc_token, password);
+        ghToken = token;
+        ghRepo = saved.repo || DEFAULT_REPO;
         ghBranch = saved.branch || DEFAULT_BRANCH;
         isAdmin = true;
         return true;
@@ -41,18 +67,19 @@
     return false;
   }
 
-  function saveToken() {
-    localStorage.setItem('tracedev_gh_auth', JSON.stringify({
-      token: ghToken,
+  function saveToken(password) {
+    if (!ghToken || !password) return;
+    const enc = encryptWithPassword(ghToken, password);
+    localStorage.setItem('tracedev_auth', JSON.stringify({
+      enc_token: enc,
       repo: ghRepo,
       branch: ghBranch,
     }));
   }
 
-  function clearToken() {
-    localStorage.removeItem('tracedev_gh_auth');
+  function clearAuth() {
+    localStorage.removeItem('tracedev_auth');
     ghToken = null;
-    ghRepo = null;
     postsSha = null;
     isAdmin = false;
   }
@@ -66,17 +93,14 @@
       'Accept': 'application/vnd.github.v3+json',
       ...opts.headers,
     };
-
     const res = await fetch(url, { ...opts, headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      const msg = err.message || `GitHub API: ${res.status}`;
-      throw new Error(msg);
+      throw new Error(err.message || `GitHub API ${res.status}`);
     }
     return res.json();
   }
 
-  // 读取文件
   async function ghRead(path) {
     const data = await ghAPI(path + `?ref=${ghBranch}`);
     return {
@@ -85,7 +109,6 @@
     };
   }
 
-  // 写入文件（需要 sha 防止冲突）
   async function ghWrite(path, content, sha, commitMsg) {
     const body = {
       message: commitMsg || '📝 更新学习日志',
@@ -93,122 +116,71 @@
       branch: ghBranch,
     };
     if (sha) body.sha = sha;
-
-    const result = await ghAPI(path, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    });
+    const result = await ghAPI(path, { method: 'PUT', body: JSON.stringify(body) });
     return { sha: result.content.sha };
   }
 
-  // ── 上传图片/文件到 GitHub（base64）───────────────
+  // ── 上传文件到 GitHub ─────────────────────────────
   async function uploadToGitHub(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const base64 = reader.result.split(',')[1]; // 去掉 data:xxx;base64, 前缀
-          const ext = file.name.split('.').pop().toLowerCase();
+          const base64 = reader.result.split(',')[1];
           const ts = Date.now();
           const safeName = file.name.replace(/[^a-zA-Z0-9._一-鿿-]/g, '_');
           const path = `uploads/${ts}_${safeName}`;
-
-          // 上传到 GitHub（不需要 sha，新文件）
           const [owner, repo] = ghRepo.split('/');
           const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`;
           const headers = {
             'Authorization': `Bearer ${ghToken}`,
             'Accept': 'application/vnd.github.v3+json',
           };
-
-          // 检查是否已存在
           let sha = null;
           try {
-            const checkRes = await fetch(url + `?ref=${ghBranch}`, { headers });
-            if (checkRes.ok) {
-              const existing = await checkRes.json();
-              sha = existing.sha;
-            }
+            const cr = await fetch(url + `?ref=${ghBranch}`, { headers });
+            if (cr.ok) sha = (await cr.json()).sha;
           } catch {}
-
-          const body = {
-            message: `📎 上传: ${file.name}`,
-            content: base64,
-            branch: ghBranch,
-          };
+          const body = { message: `📎 上传: ${file.name}`, content: base64, branch: ghBranch };
           if (sha) body.sha = sha;
-
-          const res = await fetch(url, {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify(body),
-          });
-
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.message || '上传失败');
-          }
-
+          const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || '上传失败');
           const result = await res.json();
-          // 返回 raw URL
-          const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ghBranch}/${path}`;
           resolve({
-            url: rawUrl,
+            url: `https://raw.githubusercontent.com/${owner}/${repo}/${ghBranch}/${path}`,
             filename: `${ts}_${safeName}`,
             original_name: file.name,
           });
-        } catch (e) {
-          reject(e);
-        }
+        } catch (e) { reject(e); }
       };
       reader.onerror = () => reject(new Error('读取文件失败'));
       reader.readAsDataURL(file);
     });
   }
 
-  // ── 检测后端（优先 GitHub，然后 Flask 本地）─────
+  // ── 后端检测 ──────────────────────────────────────
   async function detectBackend() {
-    // 先尝试从 localStorage 加载
-    if (loadToken()) {
-      // 验证 Token 是否有效
-      try {
-        const [owner, repo] = ghRepo.split('/');
-        const url = `${GITHUB_API}/repos/${owner}/${repo}`;
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' },
-        });
-        if (res.ok) return 'github';
-      } catch {}
-      // Token 无效
-      clearToken();
-      isAdmin = false;
-    }
-
-    // 尝试本地 Flask
+    if (isAdmin && ghToken) return 'github';
     try {
       const res = await fetch('/api/check-auth');
       if (res.ok) return 'flask';
     } catch {}
-
     return 'readonly';
   }
 
   // ── 文章获取 ──────────────────────────────────────
   async function fetchPosts() {
     const mode = await detectBackend();
-
     try {
       if (mode === 'github') {
         const result = await ghRead(POSTS_PATH);
         posts = result.content;
         postsSha = result.sha;
-        // 确保是数组
         if (!Array.isArray(posts)) posts = [];
       } else if (mode === 'flask') {
         const res = await fetch('/api/posts');
         posts = await res.json();
       } else {
-        // 静态只读：从 JSON 文件读取
         const res = await fetch('/data/posts.json');
         if (res.ok) posts = await res.json();
         else posts = [];
@@ -217,16 +189,12 @@
       console.warn('获取文章失败:', e.message);
       posts = [];
     }
-
-    // 按时间倒序
     posts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     renderJournalList();
     buildTagFilters();
   }
 
-  // ── 保存文章到 GitHub ────────────────────────────
   async function savePostsToGitHub(commitMsg) {
-    // 按时间倒序排列后保存
     const sorted = [...posts].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     const result = await ghWrite(POSTS_PATH, sorted, postsSha, commitMsg);
     postsSha = result.sha;
@@ -251,7 +219,7 @@
     } else {
       if (bar) bar.classList.add('hidden');
       if (btn) {
-        btn.title = '管理员登录（GitHub Token）';
+        btn.title = '管理员登录';
         btn.classList.remove('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
         btn.classList.add('text-[var(--text-dim)]');
         if (lockIcon) { lockIcon.classList.remove('fa-lock-open'); lockIcon.classList.add('fa-lock'); }
@@ -264,27 +232,17 @@
   function showLogin() {
     const modal = $('#login-modal');
     if (!modal) return;
-    $('#login-repo').value = DEFAULT_REPO;
-    $('#login-token').value = '';
+    $('#login-password').value = '';
     $('#login-error').classList.add('hidden');
     modal.classList.remove('hidden');
-    setTimeout(() => $('#login-token').focus(), 150);
+    setTimeout(() => $('#login-password').focus(), 150);
   }
   function hideLogin() { $('#login-modal').classList.add('hidden'); }
 
   async function doLogin() {
-    const repo = ($('#login-repo').value || '').trim();
-    const token = ($('#login-token').value || '').trim();
+    const pw = $('#login-password').value;
     const errEl = $('#login-error');
-
-    if (!repo) { errEl.textContent = '请输入仓库名（如 wfw6666666666/traceDev）'; errEl.classList.remove('hidden'); return; }
-    if (!token) { errEl.textContent = '请输入 GitHub Token'; errEl.classList.remove('hidden'); return; }
-
-    // 验证
-    const [owner, repoName] = repo.split('/');
-    if (!owner || !repoName) {
-      errEl.textContent = '仓库格式错误，应为 用户名/仓库名'; errEl.classList.remove('hidden'); return;
-    }
+    if (!pw) { errEl.textContent = '请输入密码'; errEl.classList.remove('hidden'); return; }
 
     errEl.classList.add('hidden');
     const btn = $('#btn-login-submit');
@@ -292,22 +250,62 @@
     btn.disabled = true;
 
     try {
-      const url = `${GITHUB_API}/repos/${owner}/${repoName}`;
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' },
-      });
-      if (!res.ok) {
-        const msg = res.status === 401 ? 'Token 无效或被吊销' :
-                    res.status === 404 ? '仓库不存在或 Token 没有权限访问' :
-                    `验证失败 (HTTP ${res.status})`;
-        throw new Error(msg);
+      const hash = await sha256(pw);
+      if (hash !== PASSWORD_HASH) {
+        throw new Error('密码错误');
       }
 
-      // 成功
+      // 密码正确，尝试从 localStorage 恢复 Token
+      if (loadToken(pw)) {
+        // 已有 Token，验证是否有效
+        try {
+          const [owner, repo] = ghRepo.split('/');
+          const url = `${GITHUB_API}/repos/${owner}/${repo}`;
+          const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' },
+          });
+          if (res.ok) {
+            hideLogin();
+            updateAdminUI();
+            await fetchPosts();
+            return;
+          }
+        } catch {}
+        // Token 无效，清除
+        clearAuth();
+        isAdmin = false;
+      }
+
+      // 没有 Token 或 Token 无效，提示输入
+      const token = prompt(
+        '🔑 首次登录需要配置 GitHub Token\n\n' +
+        '1. 打开 https://github.com/settings/tokens\n' +
+        '2. Generate new token (classic)\n' +
+        '3. 勾选 repo 权限，生成后复制\n\n' +
+        '请粘贴你的 GitHub Token:'
+      );
+      if (!token || !token.startsWith('ghp_')) {
+        throw new Error('Token 格式不正确（应以 ghp_ 开头）');
+      }
+
+      // 验证 Token
       ghToken = token;
-      ghRepo = repo;
+      ghRepo = DEFAULT_REPO;
       ghBranch = DEFAULT_BRANCH;
-      saveToken();
+      try {
+        const [owner, repo] = ghRepo.split('/');
+        const url = `${GITHUB_API}/repos/${owner}/${repo}`;
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' },
+        });
+        if (!res.ok) throw new Error('Token 验证失败');
+      } catch (e) {
+        ghToken = null;
+        throw new Error('Token 无效或已过期');
+      }
+
+      // Token 有效，加密保存
+      saveToken(pw);
       isAdmin = true;
       hideLogin();
       updateAdminUI();
@@ -322,8 +320,8 @@
   }
 
   async function doLogout() {
-    if (!confirm('确定退出？Token 将从浏览器中清除。')) return;
-    clearToken();
+    if (!confirm('确定退出？')) return;
+    clearAuth();
     isAdmin = false;
     updateAdminUI();
     await fetchPosts();
@@ -338,13 +336,9 @@
     posts.forEach(p => (p.tags || []).forEach(t => tagSet.add(t)));
 
     let html = '<button class="journal-tag-btn active px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="all">全部</button>';
-    cats.forEach(cat => {
-      html += `<button class="journal-tag-btn px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="cat:${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
-    });
+    cats.forEach(cat => html += `<button class="journal-tag-btn px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="cat:${escapeHtml(cat)}">${escapeHtml(cat)}</button>`);
     if (cats.size > 0 && tagSet.size > 0) html += '<span class="text-[var(--text-dim)] mx-1">|</span>';
-    tagSet.forEach(tag => {
-      html += `<button class="journal-tag-btn px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
-    });
+    tagSet.forEach(tag => html += `<button class="journal-tag-btn px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`);
     container.innerHTML = html;
     container.querySelectorAll('.journal-tag-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -366,18 +360,14 @@
         filtered = filtered.filter(p => (p.tags || []).includes(filter));
       }
     }
-
     if (filtered.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></div>
-          <p class="empty-title">${filter === 'all' ? '暂无学习日志' : '该分类下暂无文章'}</p>
-          <p class="empty-desc">${isAdmin ? '点击上方「新建日志」开始记录' : '学习日志即将上线，敬请期待'}</p>
-        </div>
-      `;
+      container.innerHTML = `<div class="empty-state">
+        <div class="empty-icon"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></div>
+        <p class="empty-title">${filter === 'all' ? '暂无学习日志' : '该分类下暂无文章'}</p>
+        <p class="empty-desc">${isAdmin ? '点击上方「新建日志」开始记录' : '学习日志即将上线，敬请期待'}</p>
+      </div>`;
       return;
     }
-
     container.innerHTML = filtered.map(p => {
       const excerpt = stripMarkdown(p.content || '').slice(0, 200);
       const tagHtml = (p.tags || []).map(t => `<span class="journal-badge">${escapeHtml(t)}</span>`).join('');
@@ -390,27 +380,20 @@
           <button class="edit-post-btn px-2.5 py-1 rounded-md bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-muted)] text-xs hover:text-neon-blue hover:border-neon-blue/50 transition-colors" data-post-id="${p.id}" title="编辑">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
+        </div>` : '';
+      return `<article class="journal-card" data-post-id="${p.id}">
+        <div class="journal-card-header"><h3 class="journal-card-title">${escapeHtml(p.title)}</h3>${adminBtns}</div>
+        <div class="journal-card-meta">
+          <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(p.createdAt)}</span>
+          ${p.category ? `<span><i class="fa-regular fa-folder"></i> ${escapeHtml(p.category)}</span>` : ''}
+          ${(p.files || []).length > 0 ? `<span><i class="fa-solid fa-paperclip"></i> ${p.files.length} 个附件</span>` : ''}
+          ${(p.images || []).length > 0 ? `<span><i class="fa-solid fa-image"></i> ${p.images.length} 张图片</span>` : ''}
         </div>
-      ` : '';
-      return `
-        <article class="journal-card" data-post-id="${p.id}">
-          <div class="journal-card-header">
-            <h3 class="journal-card-title">${escapeHtml(p.title)}</h3>
-            ${adminBtns}
-          </div>
-          <div class="journal-card-meta">
-            <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(p.createdAt)}</span>
-            ${p.category ? `<span><i class="fa-regular fa-folder"></i> ${escapeHtml(p.category)}</span>` : ''}
-            ${(p.files || []).length > 0 ? `<span><i class="fa-solid fa-paperclip"></i> ${p.files.length} 个附件</span>` : ''}
-            ${(p.images || []).length > 0 ? `<span><i class="fa-solid fa-image"></i> ${p.images.length} 张图片</span>` : ''}
-          </div>
-          <div class="journal-card-excerpt">${escapeHtml(excerpt)}</div>
-          ${tagHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${tagHtml}</div>` : ''}
-          ${imageHtml ? `<div class="journal-card-images">${imageHtml}</div>` : ''}
-        </article>
-      `;
+        <div class="journal-card-excerpt">${escapeHtml(excerpt)}</div>
+        ${tagHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${tagHtml}</div>` : ''}
+        ${imageHtml ? `<div class="journal-card-images">${imageHtml}</div>` : ''}
+      </article>`;
     }).join('');
-
     container.querySelectorAll('.journal-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.edit-post-btn')) return;
@@ -431,57 +414,38 @@
     if (!modal || !content) return;
 
     const tagHtml = (post.tags || []).map(t => `<span class="journal-badge">${escapeHtml(t)}</span>`).join('');
-    const imageHtml = (post.images || []).length > 0 ? `
-      <div class="post-detail-images">
-        ${post.images.map(img => {
-          const src = img.startsWith('http') || img.startsWith('data:') ? img : img.startsWith('/') ? img : '/' + img;
-          return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
-        }).join('')}
-      </div>
-    ` : '';
-    const fileHtml = (post.files || []).length > 0 ? `
-      <div class="post-detail-files">
-        <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">📎 附件下载</p>
-        ${post.files.map(f => {
-          const fUrl = (f.url || f.path || '');
-          const fileUrl = fUrl.startsWith('http') || fUrl.startsWith('/') ? fUrl : '/' + fUrl;
-          return `<a href="${escapeHtml(fileUrl)}" class="post-file-link" target="_blank" rel="noopener">
-            <i class="fa-solid fa-download"></i> ${escapeHtml(f.original_name || f.name || f.filename || '')}
-          </a>`;
-        }).join('')}
-      </div>
-    ` : '';
-    const linkHtml = (post.links || []).length > 0 ? `
-      <div class="post-detail-links">
-        <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">🔗 参考链接</p>
-        ${post.links.map(l => `<a href="${escapeHtml(l)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l)}</a>`).join('')}
-      </div>
-    ` : '';
+    const imageHtml = (post.images || []).length > 0 ? `<div class="post-detail-images">${post.images.map(img => {
+      const src = img.startsWith('http') || img.startsWith('data:') ? img : img.startsWith('/') ? img : '/' + img;
+      return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
+    }).join('')}</div>` : '';
+    const fileHtml = (post.files || []).length > 0 ? `<div class="post-detail-files">
+      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">📎 附件下载</p>
+      ${post.files.map(f => {
+        const fUrl = (f.url || f.path || '');
+        return `<a href="${escapeHtml(fUrl.startsWith('http') || fUrl.startsWith('/') ? fUrl : '/' + fUrl)}" class="post-file-link" target="_blank" rel="noopener">
+          <i class="fa-solid fa-download"></i> ${escapeHtml(f.original_name || f.name || f.filename || '')}</a>`;
+      }).join('')}
+    </div>` : '';
+    const linkHtml = (post.links || []).length > 0 ? `<div class="post-detail-links">
+      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">🔗 参考链接</p>
+      ${post.links.map(l => `<a href="${escapeHtml(l)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l)}</a>`).join('')}
+    </div>` : '';
 
-    content.innerHTML = `
-      <div class="post-detail-header">
-        <h2>${escapeHtml(post.title)}</h2>
-        <div class="post-detail-meta">
-          <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(post.createdAt)}</span>
-          ${post.category ? `<span><i class="fa-regular fa-folder"></i> ${escapeHtml(post.category)}</span>` : ''}
-          <span><i class="fa-regular fa-clock"></i> 更新于 ${escapeHtml(post.updatedAt)}</span>
-        </div>
-        ${tagHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${tagHtml}</div>` : ''}
-      </div>
-      ${imageHtml}${fileHtml}
-      <div class="post-detail-body">${simpleMarkdown(post.content || '')}</div>
-      ${linkHtml}
-      ${isAdmin ? `
-        <div class="mt-8 pt-4 border-t border-[var(--border-default)] flex gap-3">
-          <button class="edit-post-from-detail px-4 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-post-id="${post.id}">
-            <i class="fa-solid fa-pen-to-square mr-1.5"></i>编辑
-          </button>
-        </div>
-      ` : ''}
-    `;
+    content.innerHTML = `<div class="post-detail-header">
+      <h2>${escapeHtml(post.title)}</h2>
+      <div class="post-detail-meta">
+        <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(post.createdAt)}</span>
+        ${post.category ? `<span><i class="fa-regular fa-folder"></i> ${escapeHtml(post.category)}</span>` : ''}
+        <span><i class="fa-regular fa-clock"></i> 更新于 ${escapeHtml(post.updatedAt)}</span>
+      </div>${tagHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${tagHtml}</div>` : ''}
+    </div>${imageHtml}${fileHtml}
+    <div class="post-detail-body">${simpleMarkdown(post.content || '')}</div>${linkHtml}
+    ${isAdmin ? `<div class="mt-8 pt-4 border-t border-[var(--border-default)] flex gap-3">
+      <button class="edit-post-from-detail px-4 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-post-id="${post.id}">
+        <i class="fa-solid fa-pen-to-square mr-1.5"></i>编辑</button>
+    </div>` : ''}`;
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-
     const editBtn = content.querySelector('.edit-post-from-detail');
     if (editBtn) editBtn.addEventListener('click', () => { closePostDetail(); openEditor(postId); });
     content.querySelectorAll('.post-detail-images img').forEach(img => {
@@ -533,19 +497,14 @@
 
   // ── 编辑器 ─────────────────────────────────────────
   function openEditor(postId) {
-    if (!isAdmin) {
-      alert('请先登录（点击右上角 🔒 图标）');
-      showLogin();
-      return;
-    }
+    if (!isAdmin) { alert('请先登录'); showLogin(); return; }
     editingPostId = postId || null;
     const modal = $('#editor-modal');
     const titleLabel = $('#editor-title-label');
     const deleteBtn = $('#btn-delete-post');
     if (!modal) return;
 
-    // 清空上传预览
-    window._journalPendingUploads = [];
+    window._journalPending = { images: [], files: [] };
 
     if (postId) {
       const post = posts.find(p => p.id === postId);
@@ -556,13 +515,11 @@
       $('#edit-category').value = post.category || '';
       $('#edit-tags').value = (post.tags || []).join(', ');
       $('#edit-links').value = (post.links || []).join('\n');
-      window._journalPendingUploads = {
+      window._journalPending = {
         images: (post.images || []).map(url => ({ url, done: true })),
         files: (post.files || []).map(f => ({
-          url: f.url || f.path || '',
-          filename: f.filename || '',
-          original_name: f.original_name || f.name || '',
-          done: true,
+          url: f.url || f.path || '', filename: f.filename || '',
+          original_name: f.original_name || f.name || '', done: true,
         })),
       };
       deleteBtn.classList.remove('hidden');
@@ -570,10 +527,9 @@
     } else {
       titleLabel.textContent = '新建学习日志';
       ['edit-title', 'edit-content', 'edit-category', 'edit-tags', 'edit-links'].forEach(id => { $('#' + id).value = ''; });
-      window._journalPendingUploads = { images: [], files: [] };
+      window._journalPending = { images: [], files: [] };
       deleteBtn.classList.add('hidden');
     }
-
     renderUploadPreviews();
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -584,40 +540,30 @@
     $('#editor-modal').classList.add('hidden');
     document.body.style.overflow = '';
     editingPostId = null;
-    window._journalPendingUploads = { images: [], files: [] };
+    window._journalPending = { images: [], files: [] };
   }
 
   function renderUploadPreviews() {
-    const pending = window._journalPendingUploads || { images: [], files: [] };
-
-    // 图片预览
-    const imgContainer = $('#edit-images-preview');
-    if (imgContainer) {
-      if (pending.images.length === 0) {
-        imgContainer.innerHTML = '<p class="text-xs text-[var(--text-dim)] w-full">暂无图片 — 选择图片后自动上传到 GitHub</p>';
+    const p = window._journalPending || { images: [], files: [] };
+    const imgC = $('#edit-images-preview');
+    if (imgC) {
+      if (p.images.length === 0) {
+        imgC.innerHTML = '<p class="text-xs text-[var(--text-dim)] w-full">暂无图片 — 选择后自动上传到 GitHub</p>';
       } else {
-        imgContainer.innerHTML = pending.images.map((item, i) => `
-          <span class="image-preview-item">
-            <img src="${item.url}" alt="预览" />
-            <span class="remove-image" data-i="${i}" title="移除"><i class="fa-solid fa-xmark"></i></span>
-          </span>
+        imgC.innerHTML = p.images.map((item, i) => `
+          <span class="image-preview-item"><img src="${item.url}" alt="预览" /><span class="remove-image" data-i="${i}"><i class="fa-solid fa-xmark"></i></span></span>
         `).join('');
-        imgContainer.querySelectorAll('.remove-image').forEach(btn => {
-          btn.addEventListener('click', () => {
-            pending.images.splice(parseInt(btn.dataset.i), 1);
-            renderUploadPreviews();
-          });
+        imgC.querySelectorAll('.remove-image').forEach(btn => {
+          btn.addEventListener('click', () => { p.images.splice(parseInt(btn.dataset.i), 1); renderUploadPreviews(); });
         });
       }
     }
-
-    // 附件预览
-    const fileContainer = $('#edit-files-preview');
-    if (fileContainer) {
-      if (pending.files.length === 0) {
-        fileContainer.innerHTML = '<p class="text-xs text-[var(--text-dim)]">暂无附件 — 选择文件后自动上传到 GitHub</p>';
+    const fileC = $('#edit-files-preview');
+    if (fileC) {
+      if (p.files.length === 0) {
+        fileC.innerHTML = '<p class="text-xs text-[var(--text-dim)]">暂无附件 — 选择后自动上传到 GitHub</p>';
       } else {
-        fileContainer.innerHTML = pending.files.map((item, i) => `
+        fileC.innerHTML = p.files.map((item, i) => `
           <div class="file-preview-item">
             <span class="flex items-center gap-2 text-[var(--text-secondary)] truncate">
               <i class="fa-solid fa-file-lines text-[var(--text-dim)]"></i>
@@ -625,13 +571,9 @@
               ${item.done ? '<span class="text-xs text-green-400">✓</span>' : '<span class="text-xs text-[var(--text-dim)]">上传中...</span>'}
             </span>
             <span class="remove-file" data-i="${i}"><i class="fa-solid fa-xmark"></i></span>
-          </div>
-        `).join('');
-        fileContainer.querySelectorAll('.remove-file').forEach(btn => {
-          btn.addEventListener('click', () => {
-            pending.files.splice(parseInt(btn.dataset.i), 1);
-            renderUploadPreviews();
-          });
+          </div>`).join('');
+        fileC.querySelectorAll('.remove-file').forEach(btn => {
+          btn.addEventListener('click', () => { p.files.splice(parseInt(btn.dataset.i), 1); renderUploadPreviews(); });
         });
       }
     }
@@ -639,40 +581,23 @@
 
   async function handleFileSelect(files, type) {
     if (!isAdmin) return;
-    const pending = window._journalPendingUploads || { images: [], files: [] };
-
+    const p = window._journalPending || { images: [], files: [] };
     for (const file of files) {
-      // 跳过超大文件（GitHub API 限制 100MB，保守 10MB）
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`文件 "${file.name}" 超过 10MB，请压缩后上传`);
-        continue;
-      }
-
-      const entry = { file, done: false, url: '', filename: '', original_name: file.name };
-      if (type === 'image') {
-        pending.images.push(entry);
-      } else {
-        pending.files.push(entry);
-      }
+      if (file.size > 10 * 1024 * 1024) { alert(`"${file.name}" 超过10MB，请压缩`); continue; }
+      (type === 'image' ? p.images : p.files).push({ file, done: false, url: '', filename: '', original_name: file.name });
     }
     renderUploadPreviews();
-
-    // 逐个上传
-    for (const entry of (type === 'image' ? pending.images : pending.files)) {
+    for (const entry of (type === 'image' ? p.images : p.files)) {
       if (entry.done) continue;
       try {
         const result = await uploadToGitHub(entry.file);
-        entry.url = result.url;
-        entry.filename = result.filename;
-        entry.original_name = result.original_name;
-        entry.done = true;
-        entry.file = null;
+        entry.url = result.url; entry.filename = result.filename;
+        entry.original_name = result.original_name; entry.done = true; entry.file = null;
         renderUploadPreviews();
       } catch (e) {
         alert(`"${entry.original_name}" 上传失败: ${e.message}`);
-        const arr = type === 'image' ? pending.images : pending.files;
-        const idx = arr.indexOf(entry);
-        if (idx >= 0) arr.splice(idx, 1);
+        const arr = type === 'image' ? p.images : p.files;
+        arr.splice(arr.indexOf(entry), 1);
         renderUploadPreviews();
       }
     }
@@ -681,96 +606,56 @@
   async function savePost() {
     const title = $('#edit-title').value.trim();
     if (!title) { alert('请输入标题'); $('#edit-title').focus(); return; }
-
-    // 检查上传状态
-    const pending = window._journalPendingUploads || { images: [], files: [] };
-    if (pending.images.some(i => !i.done) || pending.files.some(f => !f.done)) {
-      alert('还有文件正在上传中，请稍候再保存'); return;
+    const p = window._journalPending || { images: [], files: [] };
+    if (p.images.some(i => !i.done) || p.files.some(f => !f.done)) {
+      alert('还有文件正在上传中，请稍候'); return;
     }
-
     const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10);
-    const timeStr = now.toISOString().slice(0, 16).replace('T', ' ');
-
+    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
     const newPost = {
-      id: editingPostId || `post-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`,
-      title,
-      content: $('#edit-content').value,
+      id: editingPostId || `post-${ts}`,
+      title, content: $('#edit-content').value,
       category: $('#edit-category').value.trim(),
       tags: $('#edit-tags').value.split(',').map(t => t.trim()).filter(Boolean),
       links: $('#edit-links').value.split('\n').map(l => l.trim()).filter(Boolean),
-      images: pending.images.map(i => i.url).filter(Boolean),
-      files: pending.files.map(f => ({
-        name: f.original_name, path: f.url, url: f.url,
-        filename: f.filename, original_name: f.original_name,
-      })).filter(f => f.url),
+      images: p.images.map(i => i.url).filter(Boolean),
+      files: p.files.map(f => ({ name: f.original_name, path: f.url, url: f.url, filename: f.filename, original_name: f.original_name })).filter(f => f.url),
       pinned: false,
+      createdAt: editingPostId ? (posts.find(p => p.id === editingPostId)?.createdAt || now.toISOString().slice(0,10)) : now.toISOString().slice(0,10),
+      updatedAt: now.toISOString().slice(0, 16).replace('T', ' '),
     };
-
     if (editingPostId) {
       const idx = posts.findIndex(p => p.id === editingPostId);
-      if (idx >= 0) {
-        newPost.createdAt = posts[idx].createdAt;
-        posts[idx] = newPost;
-      }
-    } else {
-      newPost.createdAt = dateStr;
-      posts.push(newPost);
-    }
-    newPost.updatedAt = timeStr;
+      if (idx >= 0) posts[idx] = newPost;
+    } else { posts.push(newPost); }
 
     const saveBtn = $('#btn-save-post');
-    const origText = saveBtn.innerHTML;
+    const orig = saveBtn.innerHTML;
     saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>保存中...';
     saveBtn.disabled = true;
-
     try {
-      const mode = isAdmin ? 'github' : 'flask';
-      if (mode === 'github') {
-        await savePostsToGitHub(`📝 ${editingPostId ? '编辑' : '新建'}学习日志: ${title}`);
-      } else {
-        const method = editingPostId ? 'PUT' : 'POST';
-        const url = editingPostId ? `/api/posts/${editingPostId}` : '/api/posts';
-        const res = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newPost),
-        });
-        if (!res.ok) throw new Error('保存失败');
-      }
+      await savePostsToGitHub(`📝 ${editingPostId ? '编辑' : '新建'}学习日志: ${title}`);
       closeEditor();
       await fetchPosts();
-    } catch (e) {
-      alert('保存失败: ' + e.message);
-    } finally {
-      saveBtn.innerHTML = origText;
-      saveBtn.disabled = false;
-    }
+    } catch (e) { alert('保存失败: ' + e.message); }
+    finally { saveBtn.innerHTML = orig; saveBtn.disabled = false; }
   }
 
   async function deletePost(postId) {
-    if (!confirm('确定要删除这篇日志吗？删除后会提交到 GitHub，可从 git 历史恢复。')) return;
+    if (!confirm('确定删除？可从 git 历史恢复。')) return;
     try {
-      const idx = posts.findIndex(p => p.id === postId);
-      if (idx >= 0) {
-        posts.splice(idx, 1);
-        await savePostsToGitHub(`🗑️ 删除学习日志`);
-      }
+      posts = posts.filter(p => p.id !== postId);
+      await savePostsToGitHub('🗑️ 删除学习日志');
       closeEditor();
       await fetchPosts();
-    } catch (e) {
-      alert('删除失败: ' + e.message);
-      await fetchPosts(); // 重新加载
-    }
+    } catch (e) { alert('删除失败: ' + e.message); await fetchPosts(); }
   }
 
-  // ── 事件绑定 ──────────────────────────────────────
+  // ── 事件 ──────────────────────────────────────────
   function bindEvents() {
-    $('#admin-btn')?.addEventListener('click', () => {
-      if (isAdmin) { /* 已登录 */ } else { showLogin(); }
-    });
+    $('#admin-btn')?.addEventListener('click', () => { if (!isAdmin) showLogin(); });
     $('#btn-login-submit')?.addEventListener('click', doLogin);
-    $('#login-token')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    $('#login-password')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
     $('#login-overlay')?.addEventListener('click', hideLogin);
     $('#login-modal .close-login')?.addEventListener('click', hideLogin);
     $('#btn-logout')?.addEventListener('click', doLogout);
@@ -788,7 +673,6 @@
     });
     $('#post-detail-overlay')?.addEventListener('click', closePostDetail);
     $('#post-detail-modal .close-post-detail')?.addEventListener('click', closePostDetail);
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (!$('#editor-modal')?.classList.contains('hidden')) closeEditor();
@@ -804,11 +688,6 @@
   // ── 初始化 ────────────────────────────────────────
   async function init() {
     bindEvents();
-    // 尝试自动登录
-    if (loadToken()) {
-      isAdmin = true;
-      updateAdminUI();
-    }
     await fetchPosts();
   }
 

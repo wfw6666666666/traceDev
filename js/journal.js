@@ -37,7 +37,8 @@
 
   // ── 简单 XOR 加密/解密（用密码保护 Token）──────
   function xorCrypt(text, key) {
-    const k = (key * (Math.ceil(text.length / key.length) + 1)).slice(0, text.length);
+    const repeatTimes = Math.ceil(text.length / key.length) + 1;
+    const k = key.repeat(repeatTimes).slice(0, text.length);
     return text.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ k.charCodeAt(i))).join('');
   }
 

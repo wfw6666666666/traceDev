@@ -9,7 +9,7 @@
   'use strict';
 
   // ── 密码哈希（SHA-256，仅用于验证，不暴露原始密码）──
-  const PASSWORD_HASH = 'ae5e0a47b9e4bb56f75ae9b2c351a9a71a13b32b7641d41f80ae9e23b045adf1';
+  const PASSWORD_HASH = '8be87c83329cc5b04a1cb883c346b897002661b61b0e87011cd92c979c08356d';
   const GITHUB_API = 'https://api.github.com';
   const POSTS_PATH = 'data/posts.json';
   const DEFAULT_REPO = 'wfw6666666666/traceDev';

@@ -59,6 +59,9 @@
 </head>
 <body class="bg-[var(--bg-body)] text-[var(--text-primary)] font-sans antialiased min-h-screen flex flex-col">
 
+  <!-- 跳过导航链接 -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-black focus:rounded-lg focus:outline-none focus:ring-2 focus:ring-neon-blue focus:ring-offset-2 focus:ring-offset-[var(--bg-body)]">跳到主要内容</a>
+
   <!-- 环境光晕 -->
   <div class="ambient-glow--top-left"></div>
   <div class="ambient-glow--bottom-right"></div>
@@ -68,25 +71,29 @@
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2">
       <!-- Logo -->
       <a href="#" class="flex items-center gap-2.5 shrink-0">
-        <img src="assets/logo.png" alt="TraceDev" class="h-8 w-auto" />
+        <img src="assets/logo.png" alt="TraceDev 技术资源库 Logo" class="h-8 w-auto" />
         <span class="text-base font-bold tracking-tight text-[var(--text-primary)] hidden sm:inline">TraceDev</span>
       </a>
 
       <!-- 桌面端：标签页导航 -->
       <div class="tab-scroll hidden md:flex flex-1 items-center justify-center mx-2">
-        <button class="tab-btn active" data-tab="videos"><i class="fa-solid fa-play mr-1.5"></i>教学视频</button>
-        <button class="tab-btn" data-tab="store"><i class="fa-solid fa-store mr-1.5"></i>咸鱼店铺</button>
-        <button class="tab-btn" data-tab="downloads"><i class="fa-solid fa-download mr-1.5"></i>资料下载</button>
-        <button class="tab-btn" data-tab="faq"><i class="fa-solid fa-circle-question mr-1.5"></i>疑难解答</button>
-        <button class="tab-btn" data-tab="about"><i class="fa-solid fa-user mr-1.5"></i>关于作者</button>
+        <button class="tab-btn active" data-tab="videos"><i class="fa-solid fa-play mr-1.5" aria-hidden="true"></i>教学视频</button>
+        <button class="tab-btn" data-tab="store"><i class="fa-solid fa-store mr-1.5" aria-hidden="true"></i>咸鱼店铺</button>
+        <button class="tab-btn" data-tab="downloads"><i class="fa-solid fa-download mr-1.5" aria-hidden="true"></i>资料下载</button>
+        <button class="tab-btn" data-tab="journal"><i class="fa-solid fa-book-open mr-1.5" aria-hidden="true"></i>学习日志</button>
+        <button class="tab-btn" data-tab="faq"><i class="fa-solid fa-circle-question mr-1.5" aria-hidden="true"></i>疑难解答</button>
+        <button class="tab-btn" data-tab="about"><i class="fa-solid fa-user mr-1.5" aria-hidden="true"></i>关于作者</button>
       </div>
 
       <!-- 右区 -->
       <div class="flex items-center gap-2 shrink-0">
+        <button id="admin-btn" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text-dim)] hover:text-neon-blue hover:bg-[var(--bg-social)] border border-transparent hover:border-[var(--border-default)] transition-all duration-300" aria-label="管理员登录" title="管理员登录">
+          <i class="fa-solid fa-lock text-xs"></i>
+        </button>
         <button id="theme-toggle" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text-secondary)] hover:text-neon-blue hover:bg-[var(--bg-social)] border border-[var(--border-default)] transition-all duration-300" aria-label="切换主题">
           <i class="fa-regular fa-sun"></i>
         </button>
-        <button id="menu-btn" class="md:hidden text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-lg" aria-label="菜单">
+        <button id="menu-btn" class="md:hidden text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-lg" aria-label="菜单" aria-expanded="false">
           <i class="fa-solid fa-bars"></i>
         </button>
       </div>
@@ -95,20 +102,25 @@
     <!-- 移动端下拉菜单（含标签页 + 主题切换） -->
     <div id="mobile-menu" class="md:hidden">
       <div class="flex flex-col px-4 pb-4 pt-2 gap-1 text-sm font-medium text-[var(--text-secondary)]">
-        <button class="tab-btn mobile-tab active" data-tab="videos"><i class="fa-solid fa-play mr-2"></i>教学视频</button>
-        <button class="tab-btn mobile-tab" data-tab="store"><i class="fa-solid fa-store mr-2"></i>咸鱼店铺</button>
-        <button class="tab-btn mobile-tab" data-tab="downloads"><i class="fa-solid fa-download mr-2"></i>资料下载</button>
-        <button class="tab-btn mobile-tab" data-tab="faq"><i class="fa-solid fa-circle-question mr-2"></i>疑难解答</button>
-        <button class="tab-btn mobile-tab" data-tab="about"><i class="fa-solid fa-user mr-2"></i>关于作者</button>
+        <button class="tab-btn mobile-tab active" data-tab="videos"><i class="fa-solid fa-play mr-2" aria-hidden="true"></i>教学视频</button>
+        <button class="tab-btn mobile-tab" data-tab="store"><i class="fa-solid fa-store mr-2" aria-hidden="true"></i>咸鱼店铺</button>
+        <button class="tab-btn mobile-tab" data-tab="downloads"><i class="fa-solid fa-download mr-2" aria-hidden="true"></i>资料下载</button>
+        <button class="tab-btn mobile-tab" data-tab="journal"><i class="fa-solid fa-book-open mr-2" aria-hidden="true"></i>学习日志</button>
+        <button class="tab-btn mobile-tab" data-tab="faq"><i class="fa-solid fa-circle-question mr-2" aria-hidden="true"></i>疑难解答</button>
+        <button class="tab-btn mobile-tab" data-tab="about"><i class="fa-solid fa-user mr-2" aria-hidden="true"></i>关于作者</button>
       </div>
     </div>
   </header>
 
   <!-- ==================== 内容面板 ==================== -->
-  <main class="flex-1 pt-16">
+  <main id="main-content" class="flex-1 pt-16">
 
     <!-- ─── 📺 教学视频 ─── -->
     <section id="panel-videos" class="tab-panel active py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      <div class="section-header">
+        <h2>📺 教学视频</h2>
+        <p>嵌入式开发、单片机、Linux 等技术教程，从入门到进阶</p>
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="video-grid">
         <!-- 由 JS 动态填充 -->
       </div>
@@ -116,6 +128,10 @@
 
     <!-- ─── 🏪 咸鱼店铺 ─── -->
     <section id="panel-store" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      <div class="section-header">
+        <h2>🏪 咸鱼店铺</h2>
+        <p>开发板、模块、工具 — 物美价廉的学生福利</p>
+      </div>
       <div class="flex flex-wrap justify-center gap-5" id="product-grid">
         <!-- 由 JS 动态填充 -->
       </div>
@@ -123,6 +139,10 @@
 
     <!-- ─── 📦 资料下载 ─── -->
     <section id="panel-downloads" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      <div class="section-header">
+        <h2>📦 资料下载</h2>
+        <p>源码工程、PCB 文件、学习资料 — 分类查找，快速下载</p>
+      </div>
       <div class="flex flex-col lg:flex-row gap-6">
         <!-- 左侧：下拉分类 -->
         <div class="lg:w-48 shrink-0">
@@ -145,8 +165,57 @@
       </div>
     </section>
 
+    <!-- ─── 📖 学习日志 ─── -->
+    <section id="panel-journal" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full">
+      <div class="section-header">
+        <h2>📖 学习日志</h2>
+        <p>记录学习过程 · 分享技术心得 · 巩固知识体系</p>
+      </div>
+
+      <!-- 管理员操作栏（仅登录后可见） -->
+      <div id="journal-admin-bar" class="hidden mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-card)]">
+          <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+            <i class="fa-solid fa-user-shield text-neon-blue"></i>
+            <span id="admin-status-text">管理员模式</span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="btn-new-post" class="px-4 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+              <i class="fa-solid fa-plus mr-1.5"></i>新建日志
+            </button>
+            <button id="btn-change-pw" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-[var(--text-primary)] transition-colors">
+              <i class="fa-solid fa-key mr-1.5"></i>改密码
+            </button>
+            <button id="btn-logout" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-red-400 transition-colors">
+              <i class="fa-solid fa-right-from-bracket mr-1.5"></i>退出
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分类筛选 -->
+      <div class="flex items-center gap-2 mb-6 overflow-x-auto" id="journal-tags-filter">
+        <button class="journal-tag-btn active px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer bg-neon-blue/10 border-neon-blue/30 text-neon-blue" data-tag="all">
+          全部
+        </button>
+      </div>
+
+      <!-- 文章列表 -->
+      <div class="space-y-5" id="journal-list">
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></div>
+          <p class="empty-title">暂无学习日志</p>
+          <p class="empty-desc">学习日志即将上线，记录嵌入式开发的学习历程</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ─── ❓ 疑难解答 ─── -->
     <section id="panel-faq" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto w-full">
+      <div class="section-header">
+        <h2>❓ 疑难解答</h2>
+        <p>资源下载、开发环境、课程学习 — 常见问题一站解答</p>
+      </div>
       <div id="faq-container" class="space-y-3">
         <!-- 由 JS 动态填充 -->
       </div>
@@ -154,6 +223,10 @@
 
     <!-- ─── 👤 关于作者 ─── -->
     <section id="panel-about" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto w-full">
+      <div class="section-header">
+        <h2>👤 关于作者</h2>
+        <p>一名热爱技术与分享的嵌入式工程师</p>
+      </div>
       <div id="about-container">
         <!-- 由 JS 动态填充 -->
       </div>
@@ -166,7 +239,7 @@
     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
       <p>&copy; 2024 TraceDev. All rights reserved.</p>
       <p><span class="text-[var(--text-dim)]">备案号：</span><a href="#" class="hover:text-neon-blue transition-colors">鄂ICP备2024XXXXXXXX号-X</a></p>
-      <p><i class="fa-solid fa-envelope mr-1"></i><a href="javascript:void(0)" class="email-link hover:text-neon-blue transition-colors" data-email="3318234704@qq.com">3318234704@qq.com</a></p>
+      <p><i class="fa-solid fa-envelope mr-1" aria-hidden="true"></i><button class="email-link hover:text-neon-blue transition-colors bg-transparent border-0 cursor-pointer text-xs text-[var(--text-muted)]" data-email="3318234704@qq.com">3318234704@qq.com</button></p>
     </div>
       <div class="max-w-6xl mx-auto text-center mt-4 text-xs text-[var(--text-dim)]">
       访客 <span id="busuanzi_value_site_uv"></span> · 访问量 <span id="busuanzi_value_site_pv"></span>
@@ -207,12 +280,169 @@
     </div>
   </div>
 
+  <!-- ==================== 登录模态框 ==================== -->
+  <div id="login-modal" class="fixed inset-0 z-[110] flex items-center justify-center px-4 hidden">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="login-overlay"></div>
+    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-login" aria-label="关闭">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-xl font-bold text-[var(--text-primary)] mb-2">管理员登录</h3>
+      <p class="text-xs text-[var(--text-muted)] mb-6">请输入密码以管理学习日志</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">密码</label>
+          <input id="login-password" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="请输入管理员密码" autocomplete="current-password" />
+        </div>
+        <p id="login-error" class="text-xs text-red-400 hidden"></p>
+        <button id="btn-login-submit" class="w-full py-2.5 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+          <i class="fa-solid fa-right-to-bracket mr-1.5"></i>登录
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 文章编辑器模态框 ==================== -->
+  <div id="editor-modal" class="fixed inset-0 z-[120] flex items-start justify-center px-4 pt-12 pb-12 overflow-y-auto hidden">
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="editor-overlay"></div>
+    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <h3 id="editor-title-label" class="text-xl font-bold text-[var(--text-primary)]">新建学习日志</h3>
+        <button class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-editor" aria-label="关闭">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-5">
+        <!-- 标题 -->
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">标题 *</label>
+          <input id="edit-title" type="text" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="例：反激变压器设计笔记" />
+        </div>
+
+        <!-- 分类 & 标签 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">分类</label>
+            <input id="edit-category" type="text" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="例：电源设计" />
+          </div>
+          <div>
+            <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">标签（逗号分隔）</label>
+            <input id="edit-tags" type="text" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="例：变压器, 电源, 反激" />
+          </div>
+        </div>
+
+        <!-- 正文 -->
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">正文（支持 Markdown）</label>
+          <textarea id="edit-content" rows="14" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue resize-y font-mono leading-relaxed" placeholder="在此撰写你的学习笔记...
+
+# 反激变压器设计
+
+## 一、设计规格
+- 输入电压：AC 85-265V
+- 输出：12V/2A
+- 功率：24W
+
+## 二、磁芯选择
+..."></textarea>
+        </div>
+
+        <!-- 图片上传 -->
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">图片</label>
+          <div id="edit-images-preview" class="flex flex-wrap gap-3 mb-3"></div>
+          <div class="flex items-center gap-3">
+            <label class="px-4 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm cursor-pointer hover:border-neon-blue hover:text-neon-blue transition-colors inline-flex items-center gap-1.5">
+              <i class="fa-solid fa-image"></i> 上传图片
+              <input type="file" accept="image/*" class="hidden" id="edit-image-input" multiple />
+            </label>
+            <span class="text-xs text-[var(--text-dim)]">支持 JPG/PNG/WebP</span>
+          </div>
+        </div>
+
+        <!-- 附件上传 -->
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">附件</label>
+          <div id="edit-files-preview" class="space-y-2 mb-3"></div>
+          <div class="flex items-center gap-3">
+            <label class="px-4 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm cursor-pointer hover:border-neon-blue hover:text-neon-blue transition-colors inline-flex items-center gap-1.5">
+              <i class="fa-solid fa-paperclip"></i> 上传附件
+              <input type="file" class="hidden" id="edit-file-input" multiple />
+            </label>
+            <span class="text-xs text-[var(--text-dim)]">支持 PDF/ZIP/DOC/XLS 等</span>
+          </div>
+        </div>
+
+        <!-- 参考链接 -->
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">参考链接（每行一个）</label>
+          <textarea id="edit-links" rows="3" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue resize-y font-mono" placeholder="https://example.com/ref1
+https://example.com/ref2"></textarea>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
+          <button id="btn-delete-post" class="px-4 py-2 rounded-lg bg-red-400/10 border border-red-400/30 text-red-400 text-sm hover:bg-red-400/20 transition-colors hidden">
+            <i class="fa-solid fa-trash mr-1.5"></i>删除
+          </button>
+          <div class="flex items-center gap-3 ml-auto">
+            <button class="close-editor px-4 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-[var(--text-primary)] transition-colors">取消</button>
+            <button id="btn-save-post" class="px-6 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+              <i class="fa-solid fa-floppy-disk mr-1.5"></i>保存发布
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 文章详情模态框 ==================== -->
+  <div id="post-detail-modal" class="fixed inset-0 z-[115] flex items-start justify-center px-4 pt-12 pb-12 overflow-y-auto hidden">
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="post-detail-overlay"></div>
+    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-post-detail" aria-label="关闭">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <article id="post-detail-content">
+        <!-- 由 JS 动态填充 -->
+      </article>
+    </div>
+  </div>
+
+  <!-- ==================== 改密码模态框 ==================== -->
+  <div id="change-pw-modal" class="fixed inset-0 z-[125] flex items-center justify-center px-4 hidden">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="change-pw-overlay"></div>
+    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-changepw" aria-label="关闭">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-xl font-bold text-[var(--text-primary)] mb-6">修改密码</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">原密码</label>
+          <input id="changepw-old" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" />
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">新密码（至少6位）</label>
+          <input id="changepw-new" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" />
+        </div>
+        <p id="changepw-error" class="text-xs text-red-400 hidden"></p>
+        <p id="changepw-success" class="text-xs text-green-400 hidden"></p>
+        <button id="btn-changepw-submit" class="w-full py-2.5 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+          <i class="fa-solid fa-check mr-1.5"></i>确认修改
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== 回到顶部 ==================== -->
   <button id="back-to-top" aria-label="回到顶部"><i class="fa-solid fa-arrow-up"></i></button>
 
   <!-- ==================== JavaScript ==================== -->
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/journal.js"></script>
   <!-- 不蒜子访问统计 -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 

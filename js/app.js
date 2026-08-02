@@ -1,7 +1,8 @@
 /**
  * ============================================================
- *  TechHub · 应用交互逻辑
+ *  TraceDev · 应用交互逻辑
  *  —— 标签页导航 / 五面板渲染 / 主题切换 / 模态框 / FAQ
+ *  DESIGN.md 驱动 · 极客克制
  * ============================================================
  */
 
@@ -56,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     videos: document.getElementById('panel-videos'),
     store: document.getElementById('panel-store'),
     downloads: document.getElementById('panel-downloads'),
+    journal: document.getElementById('panel-journal'),
     faq: document.getElementById('panel-faq'),
     about: document.getElementById('panel-about'),
   };
@@ -98,12 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (publishedVideos.length === 0) {
       videoGrid.innerHTML = `
-        <div class="col-span-full text-center py-20">
-          <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] flex items-center justify-center text-3xl text-[var(--text-muted)]">
-            <i class="fa-solid fa-video"></i>
-          </div>
-          <p class="text-lg font-medium text-[var(--text-secondary)]">📺 教学视频筹备中</p>
-          <p class="text-sm text-[var(--text-muted)] mt-2">敬请期待，教程正在录制中...</p>
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
+          <p class="empty-title">教程筹备中</p>
+          <p class="empty-desc">正在录制第一批嵌入式教学视频，涵盖 STM32、Linux、PCB 等方向，敬请期待</p>
         </div>
       `;
     } else {
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = 'video-card';
         card.innerHTML = `
           <div class="video-thumb">
-            <div class="play-icon"><i class="fa-solid fa-play"></i></div>
+            <div class="play-icon"><i class="fa-solid fa-play" aria-hidden="true"></i></div>
             <span class="video-duration">${v.duration}</span>
           </div>
           <div class="video-info">
@@ -134,12 +134,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (publishedProducts.length === 0) {
       productGrid.innerHTML = `
-        <div class="text-center py-20">
-          <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-[var(--bg-card)] border border-[var(--border-card)] flex items-center justify-center text-3xl text-[var(--text-muted)]">
-            <i class="fa-solid fa-store"></i>
-          </div>
-          <p class="text-lg font-medium text-[var(--text-secondary)]">🏪 商品上架中</p>
-          <p class="text-sm text-[var(--text-muted)] mt-2">敬请期待，更多好物即将上架...</p>
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-store" aria-hidden="true"></i></div>
+          <p class="empty-title">商品上架中</p>
+          <p class="empty-desc">更多开发板、模块和工具即将上架咸鱼，敬请关注</p>
         </div>
       `;
     } else {
@@ -148,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = 'product-card';
         card.innerHTML = `
           <div class="product-image">
-            ${p.image ? `<img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover" />` : '<i class="fa-solid fa-box-open"></i>'}
+            ${p.image ? `<img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover" />` : '<i class="fa-solid fa-box-open" aria-hidden="true"></i>'}
           </div>
           <div class="product-body">
             <h3 class="text-sm font-semibold text-[var(--text-primary)] mb-1">${p.name}</h3>
@@ -156,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="flex items-center justify-between">
               <span class="product-price">${p.price}</span>
               <a href="${p.link}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-xs font-medium hover:bg-neon-blue/20 transition-all duration-300">
-                <i class="fa-solid fa-cart-shopping mr-1"></i>查看详情
+                <i class="fa-solid fa-cart-shopping mr-1" aria-hidden="true"></i>查看详情
               </a>
             </div>
           </div>
@@ -197,15 +195,15 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = `
         <div>
           <div class="flex items-start gap-3 mb-3">
-            <span class="card-icon ${isApk ? 'text-green-400 border-green-400/30 bg-green-400/10' : ''}"><i class="fa-solid ${icon}"></i></span>
+            <span class="card-icon ${isApk ? 'text-green-400 border-green-400/30 bg-green-400/10' : ''}"><i class="fa-solid ${icon}" aria-hidden="true"></i></span>
             <h3 class="text-base font-semibold text-[var(--text-primary)] leading-snug pt-0.5">${res.name}</h3>
           </div>
           <p class="text-xs text-[var(--text-muted)] leading-relaxed mb-4 line-clamp-2">${res.description}</p>
         </div>
         <div class="flex items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)]">
-          <span class="text-xs text-[var(--text-dim)]"><i class="fa-regular fa-clock mr-1"></i>${res.updatedAt}</span>
+          <span class="text-xs text-[var(--text-dim)]"><i class="fa-regular fa-clock mr-1" aria-hidden="true"></i>${res.updatedAt}</span>
           <button class="download-btn px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 active:scale-95 ${isApk ? 'bg-green-400/10 border border-green-400/30 text-green-400 hover:bg-green-400/20' : 'bg-neon-blue/10 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue/20'}" data-resource-id="${res.id}">
-            <i class="fa-solid fa-download mr-1"></i>${isApk ? '直接下载' : '获取下载'}
+            <i class="fa-solid fa-download mr-1" aria-hidden="true"></i>${isApk ? '直接下载' : '获取下载'}
           </button>
         </div>
       `;
@@ -215,9 +213,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 如果筛选结果为空
     if (filtered.length === 0) {
       resourceGrid.innerHTML = `
-        <div class="col-span-full text-center py-16 text-[var(--text-muted)]">
-          <i class="fa-solid fa-box-open text-4xl mb-4 opacity-40"></i>
-          <p class="text-sm">暂无该分类的资源</p>
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-box-open" aria-hidden="true"></i></div>
+          <p class="empty-title">暂无该类资源</p>
+          <p class="empty-desc">该分类下还没有资源，请查看其他分类或稍后再来</p>
         </div>
       `;
     }
@@ -269,9 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = document.createElement('div');
       item.className = 'faq-item';
       item.innerHTML = `
-        <button class="faq-question" data-faq-id="${faq.id}">
+        <button class="faq-question" data-faq-id="${faq.id}" aria-expanded="false">
           <span>${faq.question}</span>
-          <i class="fa-solid fa-chevron-down text-xs"></i>
+          <i class="fa-solid fa-chevron-down text-xs" aria-hidden="true"></i>
         </button>
         <div class="faq-answer">${faq.answer}</div>
       `;
@@ -283,9 +282,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOpen = item.classList.contains('open');
         // 关闭其他
         faqContainer.querySelectorAll('.faq-item.open').forEach((el) => {
-          if (el !== item) el.classList.remove('open');
+          if (el !== item) {
+            el.classList.remove('open');
+            el.querySelector('.faq-question')?.setAttribute('aria-expanded', 'false');
+          }
         });
         item.classList.toggle('open', !isOpen);
+        qBtn.setAttribute('aria-expanded', String(!isOpen));
       });
     });
   }
@@ -470,12 +473,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toast = document.createElement('div');
     toast.id = 'email-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
     toast.innerHTML = `
       <div class="flex items-center gap-3">
         <span class="text-sm text-[var(--text-secondary)]">📧</span>
         <span class="text-sm font-mono text-[var(--text-primary)]">${email}</span>
         <button class="copy-email-btn px-2.5 py-1 rounded-md bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-xs hover:bg-neon-blue/20 transition-colors" data-email="${email}">
-          <i class="fa-regular fa-copy mr-1"></i>复制
+          <i class="fa-regular fa-copy mr-1" aria-hidden="true"></i>复制
         </button>
       </div>
     `;

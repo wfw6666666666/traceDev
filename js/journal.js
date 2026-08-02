@@ -1,226 +1,335 @@
 /**
  * ============================================================
  *  TraceDev · 学习日志系统
- *  双模式：本地 Flask API（可读写）/ GitHub Pages 静态模式（只读）
+ *  GitHub API 驱动 — 直接在网站上增删改，自动提交到仓库
+ *  Token 仅保存在浏览器 localStorage，不上传任何服务器
  * ============================================================
  */
 (function () {
   'use strict';
 
+  // ── GitHub 配置 ───────────────────────────────────
+  const GITHUB_API = 'https://api.github.com';
+  const POSTS_PATH = 'data/posts.json';
+  const DEFAULT_REPO = 'wfw6666666666/traceDev';
+  const DEFAULT_BRANCH = 'master';
+
   // ── 状态 ──────────────────────────────────────────
-  let hasBackend = false;        // true = Flask API 可用, false = 静态托管
+  let ghToken = null;        // GitHub Personal Access Token
+  let ghRepo = null;         // "owner/repo"
+  let ghBranch = DEFAULT_BRANCH;
+  let postsSha = null;       // 文件 SHA（PUT 时必须）
   let isAdmin = false;
   let posts = [];
   let editingPostId = null;
-  let pendingImages = [];
-  let pendingFiles = [];
 
-  // ── DOM 引用 ──────────────────────────────────────
+  // ── DOM ───────────────────────────────────────────
   const $ = (sel) => document.querySelector(sel);
 
-  // ── API 封装 ──────────────────────────────────────
-  async function api(url, opts = {}) {
-    const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json', ...opts.headers },
-      ...opts,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      throw new Error(err.error || `请求失败 (${res.status})`);
-    }
-    return res.json();
-  }
-
-  async function uploadFile(file, type) {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('type', type);
-    const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: '上传失败' }));
-      throw new Error(err.error);
-    }
-    return res.json();
-  }
-
-  // ── 检测后端 ──────────────────────────────────────
-  async function detectBackend() {
+  // ── Token & Auth ──────────────────────────────────
+  function loadToken() {
     try {
-      const r = await fetch('/api/check-auth');
-      if (r.ok) {
-        hasBackend = true;
+      const saved = JSON.parse(localStorage.getItem('tracedev_gh_auth') || '{}');
+      if (saved.token && saved.repo) {
+        ghToken = saved.token;
+        ghRepo = saved.repo;
+        ghBranch = saved.branch || DEFAULT_BRANCH;
+        isAdmin = true;
+        return true;
       }
-    } catch {
-      hasBackend = false;
-    }
-    return hasBackend;
+    } catch {}
+    return false;
   }
 
-  // ── 认证 ──────────────────────────────────────────
-  async function checkAuth() {
-    if (!hasBackend) { isAdmin = false; updateAdminUI(); return; }
-    try {
-      const r = await api('/api/check-auth');
-      isAdmin = r.logged_in;
-      updateAdminUI();
-    } catch { isAdmin = false; updateAdminUI(); }
+  function saveToken() {
+    localStorage.setItem('tracedev_gh_auth', JSON.stringify({
+      token: ghToken,
+      repo: ghRepo,
+      branch: ghBranch,
+    }));
   }
 
-  function updateAdminUI() {
-    const bar = $('#journal-admin-bar');
-    const btn = $('#admin-btn');
-    const lockIcon = btn?.querySelector('i');
-
-    if (!hasBackend) {
-      // 静态托管模式：隐藏管理员入口
-      if (bar) bar.classList.add('hidden');
-      if (btn) {
-        btn.title = '静态托管模式 — 本地启动 Flask 以管理日志';
-        btn.classList.remove('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
-        btn.classList.add('text-[var(--text-dim)]', 'opacity-60', 'cursor-not-allowed');
-        if (lockIcon) {
-          lockIcon.classList.remove('fa-lock-open');
-          lockIcon.classList.add('fa-lock');
-        }
-      }
-      return;
-    }
-
-    if (btn) {
-      btn.classList.remove('opacity-60', 'cursor-not-allowed');
-    }
-
-    if (isAdmin) {
-      if (bar) bar.classList.remove('hidden');
-      if (btn) {
-        btn.title = '已登录 - 管理员模式';
-        btn.classList.add('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
-        btn.classList.remove('text-[var(--text-dim)]');
-        if (lockIcon) {
-          lockIcon.classList.remove('fa-lock');
-          lockIcon.classList.add('fa-lock-open');
-        }
-      }
-    } else {
-      if (bar) bar.classList.add('hidden');
-      if (btn) {
-        btn.title = '管理员登录';
-        btn.classList.remove('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
-        btn.classList.add('text-[var(--text-dim)]');
-        if (lockIcon) {
-          lockIcon.classList.remove('fa-lock-open');
-          lockIcon.classList.add('fa-lock');
-        }
-      }
-    }
-    renderJournalList();
-  }
-
-  // ── 登录模态框 ──────────────────────────────────
-  function showLogin() {
-    if (!hasBackend) {
-      alert('当前为静态托管模式（GitHub Pages），无法登录。\n\n请在本地运行 python3 server.py 来管理学习日志。');
-      return;
-    }
-    const modal = $('#login-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    $('#login-password').value = '';
-    $('#login-error').classList.add('hidden');
-    setTimeout(() => $('#login-password').focus(), 150);
-  }
-  function hideLogin() {
-    $('#login-modal').classList.add('hidden');
-  }
-
-  async function doLogin() {
-    if (!hasBackend) return;
-    const pw = $('#login-password').value;
-    const errEl = $('#login-error');
-    if (!pw) { errEl.textContent = '请输入密码'; errEl.classList.remove('hidden'); return; }
-    try {
-      await api('/api/login', { method: 'POST', body: JSON.stringify({ password: pw }) });
-      isAdmin = true;
-      hideLogin();
-      updateAdminUI();
-    } catch (e) {
-      errEl.textContent = e.message;
-      errEl.classList.remove('hidden');
-    }
-  }
-
-  async function doLogout() {
-    if (!hasBackend) return;
-    try { await api('/api/logout', { method: 'POST' }); } catch {}
+  function clearToken() {
+    localStorage.removeItem('tracedev_gh_auth');
+    ghToken = null;
+    ghRepo = null;
+    postsSha = null;
     isAdmin = false;
-    updateAdminUI();
   }
 
-  // ── 改密码 ──────────────────────────────────────
-  function showChangePw() {
-    if (!hasBackend) return;
-    const modal = $('#change-pw-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    $('#changepw-old').value = '';
-    $('#changepw-new').value = '';
-    $('#changepw-error').classList.add('hidden');
-    $('#changepw-success').classList.add('hidden');
-  }
-  function hideChangePw() {
-    $('#change-pw-modal').classList.add('hidden');
-  }
+  // ── GitHub API ────────────────────────────────────
+  async function ghAPI(path, opts = {}) {
+    const [owner, repo] = ghRepo.split('/');
+    const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`;
+    const headers = {
+      'Authorization': `Bearer ${ghToken}`,
+      'Accept': 'application/vnd.github.v3+json',
+      ...opts.headers,
+    };
 
-  async function doChangePw() {
-    if (!hasBackend) return;
-    const oldPw = $('#changepw-old').value;
-    const newPw = $('#changepw-new').value;
-    const errEl = $('#changepw-error');
-    const okEl = $('#changepw-success');
-    errEl.classList.add('hidden');
-    okEl.classList.add('hidden');
-    if (newPw.length < 6) { errEl.textContent = '新密码至少6位'; errEl.classList.remove('hidden'); return; }
-    try {
-      await api('/api/change-password', {
-        method: 'POST',
-        body: JSON.stringify({ old_password: oldPw, new_password: newPw }),
-      });
-      okEl.textContent = '密码修改成功！';
-      okEl.classList.remove('hidden');
-      setTimeout(hideChangePw, 1500);
-    } catch (e) {
-      errEl.textContent = e.message;
-      errEl.classList.remove('hidden');
+    const res = await fetch(url, { ...opts, headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err.message || `GitHub API: ${res.status}`;
+      throw new Error(msg);
     }
+    return res.json();
   }
 
-  // ── 文章获取（双模式）─────────────────────────
-  async function fetchPosts() {
-    if (hasBackend) {
-      try {
-        posts = await api('/api/posts');
-      } catch {
-        posts = [];
-      }
-    } else {
-      // 静态模式：直接从 JSON 文件读取
-      try {
-        const res = await fetch('/data/posts.json');
-        if (res.ok) {
-          posts = await res.json();
-        } else {
-          posts = [];
+  // 读取文件
+  async function ghRead(path) {
+    const data = await ghAPI(path + `?ref=${ghBranch}`);
+    return {
+      content: JSON.parse(decodeURIComponent(escape(atob(data.content)))),
+      sha: data.sha,
+    };
+  }
+
+  // 写入文件（需要 sha 防止冲突）
+  async function ghWrite(path, content, sha, commitMsg) {
+    const body = {
+      message: commitMsg || '📝 更新学习日志',
+      content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
+      branch: ghBranch,
+    };
+    if (sha) body.sha = sha;
+
+    const result = await ghAPI(path, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    return { sha: result.content.sha };
+  }
+
+  // ── 上传图片/文件到 GitHub（base64）───────────────
+  async function uploadToGitHub(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64 = reader.result.split(',')[1]; // 去掉 data:xxx;base64, 前缀
+          const ext = file.name.split('.').pop().toLowerCase();
+          const ts = Date.now();
+          const safeName = file.name.replace(/[^a-zA-Z0-9._一-鿿-]/g, '_');
+          const path = `uploads/${ts}_${safeName}`;
+
+          // 上传到 GitHub（不需要 sha，新文件）
+          const [owner, repo] = ghRepo.split('/');
+          const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`;
+          const headers = {
+            'Authorization': `Bearer ${ghToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+          };
+
+          // 检查是否已存在
+          let sha = null;
+          try {
+            const checkRes = await fetch(url + `?ref=${ghBranch}`, { headers });
+            if (checkRes.ok) {
+              const existing = await checkRes.json();
+              sha = existing.sha;
+            }
+          } catch {}
+
+          const body = {
+            message: `📎 上传: ${file.name}`,
+            content: base64,
+            branch: ghBranch,
+          };
+          if (sha) body.sha = sha;
+
+          const res = await fetch(url, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || '上传失败');
+          }
+
+          const result = await res.json();
+          // 返回 raw URL
+          const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${ghBranch}/${path}`;
+          resolve({
+            url: rawUrl,
+            filename: `${ts}_${safeName}`,
+            original_name: file.name,
+          });
+        } catch (e) {
+          reject(e);
         }
-      } catch {
-        posts = [];
-      }
-      // 按时间倒序
-      posts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      };
+      reader.onerror = () => reject(new Error('读取文件失败'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ── 检测后端（优先 GitHub，然后 Flask 本地）─────
+  async function detectBackend() {
+    // 先尝试从 localStorage 加载
+    if (loadToken()) {
+      // 验证 Token 是否有效
+      try {
+        const [owner, repo] = ghRepo.split('/');
+        const url = `${GITHUB_API}/repos/${owner}/${repo}`;
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' },
+        });
+        if (res.ok) return 'github';
+      } catch {}
+      // Token 无效
+      clearToken();
+      isAdmin = false;
     }
+
+    // 尝试本地 Flask
+    try {
+      const res = await fetch('/api/check-auth');
+      if (res.ok) return 'flask';
+    } catch {}
+
+    return 'readonly';
+  }
+
+  // ── 文章获取 ──────────────────────────────────────
+  async function fetchPosts() {
+    const mode = await detectBackend();
+
+    try {
+      if (mode === 'github') {
+        const result = await ghRead(POSTS_PATH);
+        posts = result.content;
+        postsSha = result.sha;
+        // 确保是数组
+        if (!Array.isArray(posts)) posts = [];
+      } else if (mode === 'flask') {
+        const res = await fetch('/api/posts');
+        posts = await res.json();
+      } else {
+        // 静态只读：从 JSON 文件读取
+        const res = await fetch('/data/posts.json');
+        if (res.ok) posts = await res.json();
+        else posts = [];
+      }
+    } catch (e) {
+      console.warn('获取文章失败:', e.message);
+      posts = [];
+    }
+
+    // 按时间倒序
+    posts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     renderJournalList();
     buildTagFilters();
   }
 
+  // ── 保存文章到 GitHub ────────────────────────────
+  async function savePostsToGitHub(commitMsg) {
+    // 按时间倒序排列后保存
+    const sorted = [...posts].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const result = await ghWrite(POSTS_PATH, sorted, postsSha, commitMsg);
+    postsSha = result.sha;
+  }
+
+  // ── 认证 UI ──────────────────────────────────────
+  function updateAdminUI() {
+    const bar = $('#journal-admin-bar');
+    const btn = $('#admin-btn');
+    const lockIcon = btn?.querySelector('i');
+    const repoName = $('#admin-repo-name');
+
+    if (isAdmin) {
+      if (bar) bar.classList.remove('hidden');
+      if (repoName) repoName.textContent = ghRepo || '';
+      if (btn) {
+        btn.title = '已登录 - 管理员模式';
+        btn.classList.add('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
+        btn.classList.remove('text-[var(--text-dim)]', 'opacity-60', 'cursor-not-allowed');
+        if (lockIcon) { lockIcon.classList.remove('fa-lock'); lockIcon.classList.add('fa-lock-open'); }
+      }
+    } else {
+      if (bar) bar.classList.add('hidden');
+      if (btn) {
+        btn.title = '管理员登录（GitHub Token）';
+        btn.classList.remove('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
+        btn.classList.add('text-[var(--text-dim)]');
+        if (lockIcon) { lockIcon.classList.remove('fa-lock-open'); lockIcon.classList.add('fa-lock'); }
+      }
+    }
+    renderJournalList();
+  }
+
+  // ── 登录 ──────────────────────────────────────────
+  function showLogin() {
+    const modal = $('#login-modal');
+    if (!modal) return;
+    $('#login-repo').value = DEFAULT_REPO;
+    $('#login-token').value = '';
+    $('#login-error').classList.add('hidden');
+    modal.classList.remove('hidden');
+    setTimeout(() => $('#login-token').focus(), 150);
+  }
+  function hideLogin() { $('#login-modal').classList.add('hidden'); }
+
+  async function doLogin() {
+    const repo = ($('#login-repo').value || '').trim();
+    const token = ($('#login-token').value || '').trim();
+    const errEl = $('#login-error');
+
+    if (!repo) { errEl.textContent = '请输入仓库名（如 wfw6666666666/traceDev）'; errEl.classList.remove('hidden'); return; }
+    if (!token) { errEl.textContent = '请输入 GitHub Token'; errEl.classList.remove('hidden'); return; }
+
+    // 验证
+    const [owner, repoName] = repo.split('/');
+    if (!owner || !repoName) {
+      errEl.textContent = '仓库格式错误，应为 用户名/仓库名'; errEl.classList.remove('hidden'); return;
+    }
+
+    errEl.classList.add('hidden');
+    const btn = $('#btn-login-submit');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>验证中...';
+    btn.disabled = true;
+
+    try {
+      const url = `${GITHUB_API}/repos/${owner}/${repoName}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+      });
+      if (!res.ok) {
+        const msg = res.status === 401 ? 'Token 无效或被吊销' :
+                    res.status === 404 ? '仓库不存在或 Token 没有权限访问' :
+                    `验证失败 (HTTP ${res.status})`;
+        throw new Error(msg);
+      }
+
+      // 成功
+      ghToken = token;
+      ghRepo = repo;
+      ghBranch = DEFAULT_BRANCH;
+      saveToken();
+      isAdmin = true;
+      hideLogin();
+      updateAdminUI();
+      await fetchPosts();
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-1.5"></i>登录';
+      btn.disabled = false;
+    }
+  }
+
+  async function doLogout() {
+    if (!confirm('确定退出？Token 将从浏览器中清除。')) return;
+    clearToken();
+    isAdmin = false;
+    updateAdminUI();
+    await fetchPosts();
+  }
+
+  // ── 标签筛选 ──────────────────────────────────────
   function buildTagFilters() {
     const container = $('#journal-tags-filter');
     if (!container) return;
@@ -249,12 +358,10 @@
   function renderJournalList(filter = 'all') {
     const container = $('#journal-list');
     if (!container) return;
-
     let filtered = [...posts];
     if (filter !== 'all') {
       if (filter.startsWith('cat:')) {
-        const cat = filter.slice(4);
-        filtered = filtered.filter(p => p.category === cat);
+        filtered = filtered.filter(p => p.category === filter.slice(4));
       } else {
         filtered = filtered.filter(p => (p.tags || []).includes(filter));
       }
@@ -275,8 +382,7 @@
       const excerpt = stripMarkdown(p.content || '').slice(0, 200);
       const tagHtml = (p.tags || []).map(t => `<span class="journal-badge">${escapeHtml(t)}</span>`).join('');
       const imageHtml = (p.images || []).slice(0, 3).map(img => {
-        // 处理相对/绝对路径
-        const src = img.startsWith('http') ? img : img.startsWith('/') ? img : '/' + img;
+        const src = img.startsWith('http') || img.startsWith('data:') ? img : img.startsWith('/') ? img : '/' + img;
         return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
       }).join('');
       const adminBtns = isAdmin ? `
@@ -286,7 +392,6 @@
           </button>
         </div>
       ` : '';
-
       return `
         <article class="journal-card" data-post-id="${p.id}">
           <div class="journal-card-header">
@@ -329,7 +434,7 @@
     const imageHtml = (post.images || []).length > 0 ? `
       <div class="post-detail-images">
         ${post.images.map(img => {
-          const src = img.startsWith('http') ? img : img.startsWith('/') ? img : '/' + img;
+          const src = img.startsWith('http') || img.startsWith('data:') ? img : img.startsWith('/') ? img : '/' + img;
           return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
         }).join('')}
       </div>
@@ -338,8 +443,9 @@
       <div class="post-detail-files">
         <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">📎 附件下载</p>
         ${post.files.map(f => {
-          const fileUrl = (f.url || f.path || '').startsWith('http') ? (f.url || f.path) : (f.url || f.path || '').startsWith('/') ? (f.url || f.path) : '/' + (f.url || f.path);
-          return `<a href="${escapeHtml(fileUrl)}" class="post-file-link" download>
+          const fUrl = (f.url || f.path || '');
+          const fileUrl = fUrl.startsWith('http') || fUrl.startsWith('/') ? fUrl : '/' + fUrl;
+          return `<a href="${escapeHtml(fileUrl)}" class="post-file-link" target="_blank" rel="noopener">
             <i class="fa-solid fa-download"></i> ${escapeHtml(f.original_name || f.name || f.filename || '')}
           </a>`;
         }).join('')}
@@ -362,8 +468,7 @@
         </div>
         ${tagHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${tagHtml}</div>` : ''}
       </div>
-      ${imageHtml}
-      ${fileHtml}
+      ${imageHtml}${fileHtml}
       <div class="post-detail-body">${simpleMarkdown(post.content || '')}</div>
       ${linkHtml}
       ${isAdmin ? `
@@ -378,9 +483,7 @@
     document.body.style.overflow = 'hidden';
 
     const editBtn = content.querySelector('.edit-post-from-detail');
-    if (editBtn) {
-      editBtn.addEventListener('click', () => { closePostDetail(); openEditor(postId); });
-    }
+    if (editBtn) editBtn.addEventListener('click', () => { closePostDetail(); openEditor(postId); });
     content.querySelectorAll('.post-detail-images img').forEach(img => {
       img.addEventListener('click', () => window.open(img.src, '_blank'));
     });
@@ -391,7 +494,7 @@
     document.body.style.overflow = '';
   }
 
-  // ── Markdown 渲染 ──────────────────────────────────
+  // ── Markdown ───────────────────────────────────────
   function simpleMarkdown(text) {
     if (!text) return '';
     let html = escapeHtml(text);
@@ -428,20 +531,21 @@
     return div.innerHTML;
   }
 
-  // ── 文章编辑器（仅 Flask 模式）────────────────────
+  // ── 编辑器 ─────────────────────────────────────────
   function openEditor(postId) {
-    if (!hasBackend) {
-      alert('静态托管模式下无法编辑。请在本地运行 python3 server.py 来管理学习日志。');
+    if (!isAdmin) {
+      alert('请先登录（点击右上角 🔒 图标）');
+      showLogin();
       return;
     }
     editingPostId = postId || null;
-    pendingImages = [];
-    pendingFiles = [];
-
     const modal = $('#editor-modal');
     const titleLabel = $('#editor-title-label');
     const deleteBtn = $('#btn-delete-post');
     if (!modal) return;
+
+    // 清空上传预览
+    window._journalPendingUploads = [];
 
     if (postId) {
       const post = posts.find(p => p.id === postId);
@@ -452,20 +556,25 @@
       $('#edit-category').value = post.category || '';
       $('#edit-tags').value = (post.tags || []).join(', ');
       $('#edit-links').value = (post.links || []).join('\n');
-      pendingImages = (post.images || []).map(url => ({ uploaded: { url, filename: url.split('/').pop() } }));
-      pendingFiles = (post.files || []).map(f => ({
-        uploaded: { filename: f.path?.split('/').pop() || f.filename, url: f.url || f.path, original_name: f.original_name || f.name }
-      }));
+      window._journalPendingUploads = {
+        images: (post.images || []).map(url => ({ url, done: true })),
+        files: (post.files || []).map(f => ({
+          url: f.url || f.path || '',
+          filename: f.filename || '',
+          original_name: f.original_name || f.name || '',
+          done: true,
+        })),
+      };
       deleteBtn.classList.remove('hidden');
       deleteBtn.onclick = () => deletePost(postId);
     } else {
       titleLabel.textContent = '新建学习日志';
       ['edit-title', 'edit-content', 'edit-category', 'edit-tags', 'edit-links'].forEach(id => { $('#' + id).value = ''; });
+      window._journalPendingUploads = { images: [], files: [] };
       deleteBtn.classList.add('hidden');
     }
 
-    renderImagePreviews();
-    renderFilePreviews();
+    renderUploadPreviews();
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     setTimeout(() => $('#edit-title').focus(), 150);
@@ -475,83 +584,96 @@
     $('#editor-modal').classList.add('hidden');
     document.body.style.overflow = '';
     editingPostId = null;
-    pendingImages = [];
-    pendingFiles = [];
+    window._journalPendingUploads = { images: [], files: [] };
   }
 
-  function renderImagePreviews() {
-    const container = $('#edit-images-preview');
-    if (!container) return;
-    if (pendingImages.length === 0) {
-      container.innerHTML = '<p class="text-xs text-[var(--text-dim)] w-full">暂无图片</p>';
-      return;
+  function renderUploadPreviews() {
+    const pending = window._journalPendingUploads || { images: [], files: [] };
+
+    // 图片预览
+    const imgContainer = $('#edit-images-preview');
+    if (imgContainer) {
+      if (pending.images.length === 0) {
+        imgContainer.innerHTML = '<p class="text-xs text-[var(--text-dim)] w-full">暂无图片 — 选择图片后自动上传到 GitHub</p>';
+      } else {
+        imgContainer.innerHTML = pending.images.map((item, i) => `
+          <span class="image-preview-item">
+            <img src="${item.url}" alt="预览" />
+            <span class="remove-image" data-i="${i}" title="移除"><i class="fa-solid fa-xmark"></i></span>
+          </span>
+        `).join('');
+        imgContainer.querySelectorAll('.remove-image').forEach(btn => {
+          btn.addEventListener('click', () => {
+            pending.images.splice(parseInt(btn.dataset.i), 1);
+            renderUploadPreviews();
+          });
+        });
+      }
     }
-    container.innerHTML = pendingImages.map((item, i) => {
-      const src = item.uploaded ? item.uploaded.url : URL.createObjectURL(item.file);
-      return `<span class="image-preview-item"><img src="${src}" alt="预览" /><span class="remove-image" data-index="${i}" title="移除"><i class="fa-solid fa-xmark"></i></span></span>`;
-    }).join('');
-    container.querySelectorAll('.remove-image').forEach(btn => {
-      btn.addEventListener('click', () => { pendingImages.splice(parseInt(btn.dataset.index), 1); renderImagePreviews(); });
-    });
-  }
 
-  async function handleImageUpload(files) {
-    for (const file of files) pendingImages.push({ file, uploaded: null });
-    renderImagePreviews();
-    for (const item of pendingImages) {
-      if (item.uploaded) continue;
-      try {
-        const result = await uploadFile(item.file, 'image');
-        item.uploaded = { url: result.url, filename: result.filename };
-        item.file = null;
-        renderImagePreviews();
-      } catch (e) {
-        alert(`图片上传失败: ${e.message}`);
-        const idx = pendingImages.indexOf(item);
-        if (idx >= 0) pendingImages.splice(idx, 1);
-        renderImagePreviews();
+    // 附件预览
+    const fileContainer = $('#edit-files-preview');
+    if (fileContainer) {
+      if (pending.files.length === 0) {
+        fileContainer.innerHTML = '<p class="text-xs text-[var(--text-dim)]">暂无附件 — 选择文件后自动上传到 GitHub</p>';
+      } else {
+        fileContainer.innerHTML = pending.files.map((item, i) => `
+          <div class="file-preview-item">
+            <span class="flex items-center gap-2 text-[var(--text-secondary)] truncate">
+              <i class="fa-solid fa-file-lines text-[var(--text-dim)]"></i>
+              <span class="truncate">${escapeHtml(item.original_name || item.filename || '文件')}</span>
+              ${item.done ? '<span class="text-xs text-green-400">✓</span>' : '<span class="text-xs text-[var(--text-dim)]">上传中...</span>'}
+            </span>
+            <span class="remove-file" data-i="${i}"><i class="fa-solid fa-xmark"></i></span>
+          </div>
+        `).join('');
+        fileContainer.querySelectorAll('.remove-file').forEach(btn => {
+          btn.addEventListener('click', () => {
+            pending.files.splice(parseInt(btn.dataset.i), 1);
+            renderUploadPreviews();
+          });
+        });
       }
     }
   }
 
-  function renderFilePreviews() {
-    const container = $('#edit-files-preview');
-    if (!container) return;
-    if (pendingFiles.length === 0) {
-      container.innerHTML = '<p class="text-xs text-[var(--text-dim)]">暂无附件</p>';
-      return;
-    }
-    container.innerHTML = pendingFiles.map((item, i) => {
-      const name = item.uploaded ? item.uploaded.original_name || item.file?.name : item.file?.name || '未知文件';
-      return `<div class="file-preview-item">
-        <span class="flex items-center gap-2 text-[var(--text-secondary)] truncate">
-          <i class="fa-solid fa-file-lines text-[var(--text-dim)]"></i>
-          <span class="truncate">${escapeHtml(name)}</span>
-          ${!item.uploaded ? '<span class="text-xs text-[var(--text-dim)]">上传中...</span>' : '<span class="text-xs text-green-400">✓</span>'}
-        </span>
-        <span class="remove-file" data-index="${i}"><i class="fa-solid fa-xmark"></i></span>
-      </div>`;
-    }).join('');
-    container.querySelectorAll('.remove-file').forEach(btn => {
-      btn.addEventListener('click', () => { pendingFiles.splice(parseInt(btn.dataset.index), 1); renderFilePreviews(); });
-    });
-  }
+  async function handleFileSelect(files, type) {
+    if (!isAdmin) return;
+    const pending = window._journalPendingUploads || { images: [], files: [] };
 
-  async function handleFileUpload(files) {
-    for (const file of files) pendingFiles.push({ file, uploaded: null });
-    renderFilePreviews();
-    for (const item of pendingFiles) {
-      if (item.uploaded) continue;
+    for (const file of files) {
+      // 跳过超大文件（GitHub API 限制 100MB，保守 10MB）
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`文件 "${file.name}" 超过 10MB，请压缩后上传`);
+        continue;
+      }
+
+      const entry = { file, done: false, url: '', filename: '', original_name: file.name };
+      if (type === 'image') {
+        pending.images.push(entry);
+      } else {
+        pending.files.push(entry);
+      }
+    }
+    renderUploadPreviews();
+
+    // 逐个上传
+    for (const entry of (type === 'image' ? pending.images : pending.files)) {
+      if (entry.done) continue;
       try {
-        const result = await uploadFile(item.file, 'file');
-        item.uploaded = { url: result.url, filename: result.filename, original_name: result.original_name || item.file.name };
-        item.file = null;
-        renderFilePreviews();
+        const result = await uploadToGitHub(entry.file);
+        entry.url = result.url;
+        entry.filename = result.filename;
+        entry.original_name = result.original_name;
+        entry.done = true;
+        entry.file = null;
+        renderUploadPreviews();
       } catch (e) {
-        alert(`文件上传失败: ${e.message}`);
-        const idx = pendingFiles.indexOf(item);
-        if (idx >= 0) pendingFiles.splice(idx, 1);
-        renderFilePreviews();
+        alert(`"${entry.original_name}" 上传失败: ${e.message}`);
+        const arr = type === 'image' ? pending.images : pending.files;
+        const idx = arr.indexOf(entry);
+        if (idx >= 0) arr.splice(idx, 1);
+        renderUploadPreviews();
       }
     }
   }
@@ -560,24 +682,42 @@
     const title = $('#edit-title').value.trim();
     if (!title) { alert('请输入标题'); $('#edit-title').focus(); return; }
 
-    const uploadingFiles = pendingFiles.filter(f => !f.uploaded);
-    const uploadingImages = pendingImages.filter(i => !i.uploaded);
-    if (uploadingFiles.length > 0 || uploadingImages.length > 0) {
+    // 检查上传状态
+    const pending = window._journalPendingUploads || { images: [], files: [] };
+    if (pending.images.some(i => !i.done) || pending.files.some(f => !f.done)) {
       alert('还有文件正在上传中，请稍候再保存'); return;
     }
 
-    const body = {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toISOString().slice(0, 16).replace('T', ' ');
+
+    const newPost = {
+      id: editingPostId || `post-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`,
       title,
       content: $('#edit-content').value,
       category: $('#edit-category').value.trim(),
       tags: $('#edit-tags').value.split(',').map(t => t.trim()).filter(Boolean),
       links: $('#edit-links').value.split('\n').map(l => l.trim()).filter(Boolean),
-      images: pendingImages.map(i => i.uploaded?.url).filter(Boolean),
-      files: pendingFiles.map(f => f.uploaded ? {
-        name: f.uploaded.original_name, path: f.uploaded.url, url: f.uploaded.url,
-        filename: f.uploaded.filename, original_name: f.uploaded.original_name,
-      } : null).filter(Boolean),
+      images: pending.images.map(i => i.url).filter(Boolean),
+      files: pending.files.map(f => ({
+        name: f.original_name, path: f.url, url: f.url,
+        filename: f.filename, original_name: f.original_name,
+      })).filter(f => f.url),
+      pinned: false,
     };
+
+    if (editingPostId) {
+      const idx = posts.findIndex(p => p.id === editingPostId);
+      if (idx >= 0) {
+        newPost.createdAt = posts[idx].createdAt;
+        posts[idx] = newPost;
+      }
+    } else {
+      newPost.createdAt = dateStr;
+      posts.push(newPost);
+    }
+    newPost.updatedAt = timeStr;
 
     const saveBtn = $('#btn-save-post');
     const origText = saveBtn.innerHTML;
@@ -585,10 +725,18 @@
     saveBtn.disabled = true;
 
     try {
-      if (editingPostId) {
-        await api(`/api/posts/${editingPostId}`, { method: 'PUT', body: JSON.stringify(body) });
+      const mode = isAdmin ? 'github' : 'flask';
+      if (mode === 'github') {
+        await savePostsToGitHub(`📝 ${editingPostId ? '编辑' : '新建'}学习日志: ${title}`);
       } else {
-        await api('/api/posts', { method: 'POST', body: JSON.stringify(body) });
+        const method = editingPostId ? 'PUT' : 'POST';
+        const url = editingPostId ? `/api/posts/${editingPostId}` : '/api/posts';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newPost),
+        });
+        if (!res.ok) throw new Error('保存失败');
       }
       closeEditor();
       await fetchPosts();
@@ -601,47 +749,41 @@
   }
 
   async function deletePost(postId) {
-    if (!confirm('确定要删除这篇日志吗？此操作不可撤销。')) return;
+    if (!confirm('确定要删除这篇日志吗？删除后会提交到 GitHub，可从 git 历史恢复。')) return;
     try {
-      await api(`/api/posts/${postId}`, { method: 'DELETE' });
+      const idx = posts.findIndex(p => p.id === postId);
+      if (idx >= 0) {
+        posts.splice(idx, 1);
+        await savePostsToGitHub(`🗑️ 删除学习日志`);
+      }
       closeEditor();
       await fetchPosts();
-    } catch (e) { alert('删除失败: ' + e.message); }
+    } catch (e) {
+      alert('删除失败: ' + e.message);
+      await fetchPosts(); // 重新加载
+    }
   }
 
   // ── 事件绑定 ──────────────────────────────────────
-
   function bindEvents() {
-    // 管理员按钮 — 静态模式下点击提示说明
     $('#admin-btn')?.addEventListener('click', () => {
-      if (!hasBackend) {
-        alert('🔒 当前为静态托管模式（GitHub Pages 只读）\n\n💡 要管理学习日志，请在本地运行：\n\n    cd download-site\n    python3 server.py\n\n    然后访问 http://localhost:5050\n\n📖 线上用户仍然可以看到你推送的学习日志内容。');
-      } else if (isAdmin) {
-        // 已登录可退出
-      } else {
-        showLogin();
-      }
+      if (isAdmin) { /* 已登录 */ } else { showLogin(); }
     });
-
     $('#btn-login-submit')?.addEventListener('click', doLogin);
-    $('#login-password')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    $('#login-token')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
     $('#login-overlay')?.addEventListener('click', hideLogin);
     $('#login-modal .close-login')?.addEventListener('click', hideLogin);
     $('#btn-logout')?.addEventListener('click', doLogout);
-    $('#btn-change-pw')?.addEventListener('click', showChangePw);
-    $('#btn-changepw-submit')?.addEventListener('click', doChangePw);
-    $('#change-pw-overlay')?.addEventListener('click', hideChangePw);
-    $('#change-pw-modal .close-changepw')?.addEventListener('click', hideChangePw);
     $('#btn-new-post')?.addEventListener('click', () => openEditor(null));
     $('#editor-overlay')?.addEventListener('click', closeEditor);
     $('#editor-modal .close-editor')?.addEventListener('click', closeEditor);
     $('#btn-save-post')?.addEventListener('click', savePost);
     $('#edit-image-input')?.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) handleImageUpload(e.target.files);
+      if (e.target.files.length > 0) handleFileSelect(e.target.files, 'image');
       e.target.value = '';
     });
     $('#edit-file-input')?.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) handleFileUpload(e.target.files);
+      if (e.target.files.length > 0) handleFileSelect(e.target.files, 'file');
       e.target.value = '';
     });
     $('#post-detail-overlay')?.addEventListener('click', closePostDetail);
@@ -652,7 +794,6 @@
         if (!$('#editor-modal')?.classList.contains('hidden')) closeEditor();
         else if (!$('#post-detail-modal')?.classList.contains('hidden')) closePostDetail();
         else if (!$('#login-modal')?.classList.contains('hidden')) hideLogin();
-        else if (!$('#change-pw-modal')?.classList.contains('hidden')) hideChangePw();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         if (!$('#editor-modal')?.classList.contains('hidden')) { e.preventDefault(); savePost(); }
@@ -663,9 +804,11 @@
   // ── 初始化 ────────────────────────────────────────
   async function init() {
     bindEvents();
-    await detectBackend();
-    if (hasBackend) await checkAuth();
-    else updateAdminUI();
+    // 尝试自动登录
+    if (loadToken()) {
+      isAdmin = true;
+      updateAdminUI();
+    }
     await fetchPosts();
   }
 

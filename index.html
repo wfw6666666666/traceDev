@@ -175,16 +175,13 @@
       <!-- 管理员操作栏（仅登录后可见） -->
       <div id="journal-admin-bar" class="hidden mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-card)]">
-          <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <div class="flex items-center gap-2 text-sm">
             <i class="fa-solid fa-user-shield text-neon-blue"></i>
-            <span id="admin-status-text">管理员模式</span>
+            <span class="text-[var(--text-secondary)]">管理员模式 · 编辑后自动提交到 GitHub · <span id="admin-repo-name" class="text-neon-blue font-mono text-xs"></span></span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <button id="btn-new-post" class="px-4 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
               <i class="fa-solid fa-plus mr-1.5"></i>新建日志
-            </button>
-            <button id="btn-change-pw" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-[var(--text-primary)] transition-colors">
-              <i class="fa-solid fa-key mr-1.5"></i>改密码
             </button>
             <button id="btn-logout" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-red-400 transition-colors">
               <i class="fa-solid fa-right-from-bracket mr-1.5"></i>退出
@@ -283,16 +280,28 @@
   <!-- ==================== 登录模态框 ==================== -->
   <div id="login-modal" class="fixed inset-0 z-[110] flex items-center justify-center px-4 hidden">
     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="login-overlay"></div>
-    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <div class="relative w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
       <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-login" aria-label="关闭">
         <i class="fa-solid fa-xmark"></i>
       </button>
       <h3 class="text-xl font-bold text-[var(--text-primary)] mb-2">管理员登录</h3>
-      <p class="text-xs text-[var(--text-muted)] mb-6">请输入密码以管理学习日志</p>
+      <p class="text-xs text-[var(--text-muted)] mb-5">通过 GitHub Token 登录，直接在网站上更新学习日志</p>
       <div class="space-y-4">
         <div>
-          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">密码</label>
-          <input id="login-password" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="请输入管理员密码" autocomplete="current-password" />
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">GitHub 仓库</label>
+          <input id="login-repo" type="text" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue font-mono" placeholder="用户名/仓库名" />
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">GitHub Personal Access Token</label>
+          <input id="login-token" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue font-mono" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-subtle)]">
+          <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+            💡 <strong>如何获取 Token？</strong><br/>
+            GitHub → Settings → Developer settings → Personal access tokens → Generate new token (classic)<br/>
+            勾选 <code class="text-neon-blue">repo</code> 权限即可。
+            仅保存在你的浏览器本地，不会上传到任何服务器。
+          </p>
         </div>
         <p id="login-error" class="text-xs text-red-400 hidden"></p>
         <button id="btn-login-submit" class="w-full py-2.5 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
@@ -407,32 +416,6 @@ https://example.com/ref2"></textarea>
       <article id="post-detail-content">
         <!-- 由 JS 动态填充 -->
       </article>
-    </div>
-  </div>
-
-  <!-- ==================== 改密码模态框 ==================== -->
-  <div id="change-pw-modal" class="fixed inset-0 z-[125] flex items-center justify-center px-4 hidden">
-    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="change-pw-overlay"></div>
-    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
-      <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-changepw" aria-label="关闭">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-      <h3 class="text-xl font-bold text-[var(--text-primary)] mb-6">修改密码</h3>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">原密码</label>
-          <input id="changepw-old" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" />
-        </div>
-        <div>
-          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">新密码（至少6位）</label>
-          <input id="changepw-new" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" />
-        </div>
-        <p id="changepw-error" class="text-xs text-red-400 hidden"></p>
-        <p id="changepw-success" class="text-xs text-green-400 hidden"></p>
-        <button id="btn-changepw-submit" class="w-full py-2.5 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
-          <i class="fa-solid fa-check mr-1.5"></i>确认修改
-        </button>
-      </div>
     </div>
   </div>
 

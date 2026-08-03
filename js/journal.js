@@ -13,8 +13,8 @@
   const POSTS_PATH = 'data/posts.json';
   const DEFAULT_REPO = 'wfw6666666666/traceDev';
   const DEFAULT_BRANCH = 'master';
-  const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
-  const AI_MODEL = 'claude-sonnet-4-6';
+  const ANTHROPIC_API = 'https://api.deepseek.com/v1/chat/completions';
+  const AI_MODEL = 'deepseek-v4-pro';
 
   let ghToken = null;
   let ghRepo = DEFAULT_REPO;
@@ -49,7 +49,7 @@
       const key = PASSWORD_HASH.slice(0, 32);
       const pad = key.repeat(Math.ceil(dec.length / key.length) + 1).slice(0, dec.length);
       aiKey = dec.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ pad.charCodeAt(i))).join('');
-      return aiKey.startsWith('sk-ant');
+      return aiKey.startsWith('sk-');
     } catch { return false; }
   }
 
@@ -66,10 +66,10 @@
     aiKey = null;
   }
 
-  // ── AI 整理：调用 Claude API ─────────────────────
+  // ── AI 整理：调用 DeepSeek API ─────────────────────
   async function aiOrganize() {
     if (!aiKey) {
-      alert('请先在「AI 设置」中配置 Anthropic API Key');
+      alert('请先在「AI 设置」中配置 DeepSeek API Key');
       showAiSettings();
       return false;
     }
@@ -125,8 +125,7 @@ ${links ? '参考链接：\n' + links : ''}
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': aiKey,
-          'anthropic-version': '2023-06-01',
+          'Authorization': `Bearer ${aiKey}`,
         },
         body: JSON.stringify({
           model: AI_MODEL,
@@ -137,12 +136,12 @@ ${links ? '参考链接：\n' + links : ''}
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        if (res.status === 401) throw new Error('API Key 无效，请检查 Anthropic API Key');
+        if (res.status === 401) throw new Error('API Key 无效，请检查 DeepSeek API Key');
         throw new Error(err.error?.message || `API 错误 (${res.status})`);
       }
 
       const data = await res.json();
-      let result = data.content?.[0]?.text || '';
+      let result = data.choices?.[0]?.message?.content || '';
 
       // 清理可能的代码块包裹
       result = result.replace(/^```markdown\s*\n?/i, '').replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
@@ -189,8 +188,8 @@ ${links ? '参考链接：\n' + links : ''}
 
   function doSaveAiKey() {
     const k = $('#ai-api-key').value.trim();
-    if (!k.startsWith('sk-ant')) {
-      alert('API Key 应以 sk-ant 开头。请在 https://console.anthropic.com/ 获取。');
+    if (!k.startsWith('sk-')) {
+      alert('API Key 应以 sk- 开头。请在 https://platform.deepseek.com/api_keys 获取。');
       return;
     }
     saveAiKey(k);

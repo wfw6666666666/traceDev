@@ -90,46 +90,75 @@
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>AI 整理中...';
     btn.disabled = true;
 
-    // 获取已上传的图片 URL
+    // 获取已上传的图片，fetch 后转 base64
     const p = window._journalPending || { images: [], files: [] };
-    const imageUrls = p.images.filter(i => i.done && i.url).map(i => i.url);
+    const doneImages = p.images.filter(i => i.done && i.url);
+
+    // fetch each image and convert to base64 data URL
+    const imageDataUrls = [];
+    for (const img of doneImages) {
+      try {
+        const resp = await fetch(img.url);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const dataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          imageDataUrls.push(dataUrl);
+        }
+      } catch {}
+    }
 
     // 构建 prompt 文本
     const promptText = `你是一名资深技术文档编辑，擅长将零散的工程笔记整理成结构化、专业的技术文章。
 
-请根据以下内容${imageUrls.length > 0 ? '（含上传的截图/照片）' : ''}，输出一篇完整的学习日志。要求：
+请根据以下用户提供的内容${imageDataUrls.length > 0 ? '和上传的截图/照片' : ''}，输出一篇完整的学习日志。要求：
 
-1. **标题**：如果用户已有标题则保留优化，否则根据内容提炼一个精准标题
+1. **标题**：用户已有标题则保留优化，否则根据内容提炼一个精准标题
 2. **结构**：使用 Markdown 格式，包含 ## 二级标题分章节
 3. **排版**：
    - 规格参数用表格或列表
    - 代码/命令用 \`\`\` 代码块
    - 关键概念用 **粗体** 标注
    - 步骤用数字列表
-4. **图片分析**：仔细分析上传的图片内容（电路图、PCB截图、波形、实物照片等），将其中的关键信息（型号、参数、连线方式、测试数据等）提取到正文中
-5. **知识拓展**：在相关章节末尾加 💡 提示，补充相关理论背景或进阶方向
-6. **保留所有原始信息**，不删减用户提供的任何数据
+${imageDataUrls.length > 0 ? '4. **图文结合**：仔细分析上传的图片，将图片里可见的关键信息（芯片型号、电路连接、参数标注、波形数据、PCB布局等）提取到正文中，图片链接用 Markdown 语法插入到对应章节' : '4. **知识拓展**：在相关章节末尾加 💡 提示'}
+5. **保留所有原始信息**，不删减用户提供的任何数据
 
 ---
-**用户原始内容：**
+**用户原始信息：**
 
 标题：${title || '（无）'}
 分类：${category || '（无）'}
 标签：${tags || '（无）'}
 
 正文：
-${content || '（无正文，请根据标题、分类和图片内容生成大纲框架）'}
+${content || '（请根据标题、分类和图片来生成内容）'}
 
 ${links ? '参考链接：\n' + links : ''}
+${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => `[图片${i+1}](${img.url})`).join('\n') : ''}
 
-  Uploaded image URLs:
-  ${imageUrls.length > 0 ? imageUrls.map(u => `- ${u}`).join('\n') : '（无）'}
+---
+请输出完整的 Markdown 正文（不要用代码块包裹）。图片用 [图片N](URL) 形式插入正文，不要省略。`;
 
-  ---
-  请直接输出整理后的 Markdown 正文（不要用代码块包裹）。提醒：图片链接已列出，如有能用URL读取图片内容请分析其中信息。`;
+    // 构建消息：纯文本 + 图片 data URL
+    // DeepSeek V4-Pro 支持 image_url（OpenAI 兼容格式）
+    const hasImages = imageDataUrls.length > 0;
+    let messages;
+    if (hasImages) {
+      const contentArr = [{ type: 'text', text: promptText }];
+      for (const dataUrl of imageDataUrls) {
+        contentArr.push({ type: 'image_url', image_url: { url: dataUrl } });
+      }
+      messages = [{ role: 'user', content: contentArr }];
+    } else {
+      messages = [{ role: 'user', content: promptText }];
+    }
 
+    let res, data;
     try {
-      const res = await fetch(ANTHROPIC_API, {
+      res = await fetch(ANTHROPIC_API, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,10 +166,29 @@ ${links ? '参考链接：\n' + links : ''}
         },
         body: JSON.stringify({
           model: AI_MODEL,
-          max_tokens: 4096,
-          messages: [{ role: 'user', content: promptText }],
+          max_tokens: 8192,
+          messages: messages,
         }),
       });
+
+      // 如果图片格式被拒，自动降级为纯文本重试
+      if (!res.ok && hasImages) {
+        const err = await res.json().catch(() => ({}));
+        if (err.error?.message?.includes('image_url') || err.error?.message?.includes('unknown variant')) {
+          res = await fetch(ANTHROPIC_API, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${aiKey}`,
+            },
+            body: JSON.stringify({
+              model: AI_MODEL,
+              max_tokens: 8192,
+              messages: [{ role: 'user', content: promptText }],
+            }),
+          });
+        }
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

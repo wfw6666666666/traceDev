@@ -540,7 +540,7 @@ ${links ? '参考链接：\n' + links : ''}
     container.querySelectorAll('.journal-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.edit-post-btn')) return;
-        location.href = 'journal.html?id=' + card.dataset.postId;
+        showPostDetail(card.dataset.postId);
       });
     });
     container.querySelectorAll('.edit-post-btn').forEach(btn => {
@@ -834,97 +834,9 @@ ${links ? '参考链接：\n' + links : ''}
     });
   }
 
-  // ── 单篇文章内页渲染 ─────────────────────────────
-  function renderPostPage(post) {
-    const container = $('#journal-list');
-    const filterBar = $('#journal-tags-filter');
-    const adminBar = $('#journal-admin-bar');
-    if (!container) return;
-
-    // 隐藏筛选栏，显示返回按钮
-    if (filterBar) {
-      filterBar.innerHTML = `<a href="journal.html" class="journal-tag-btn px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" style="text-decoration:none">
-        <i class="fa-solid fa-arrow-left mr-1"></i>返回列表
-      </a>`;
-    }
-
-    // 如果非管理员也隐藏管理栏
-    if (adminBar && !isAdmin) adminBar.classList.add('hidden');
-
-    const tagHtml = (post.tags || []).map(t => `<span class="journal-badge">${escapeHtml(t)}</span>`).join('');
-    const imageHtml = (post.images || []).length > 0 ? `<div class="post-detail-images">${post.images.map(img => {
-      const src = img.startsWith('http') || img.startsWith('data:') ? img : img.startsWith('/') ? img : '/' + img;
-      return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
-    }).join('')}</div>` : '';
-    const fileHtml = (post.files || []).length > 0 ? `<div class="post-detail-files">
-      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">📎 附件下载</p>
-      ${post.files.map(f => {
-        const fUrl = (f.url || f.path || '');
-        return `<a href="${escapeHtml(fUrl.startsWith('http') || fUrl.startsWith('/') ? fUrl : '/' + fUrl)}" class="post-file-link" target="_blank" rel="noopener">
-          <i class="fa-solid fa-download"></i> ${escapeHtml(f.original_name || f.name || f.filename || '')}</a>`;
-      }).join('')}
-    </div>` : '';
-    const linkHtml = (post.links || []).length > 0 ? `<div class="post-detail-links">
-      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">🔗 参考链接</p>
-      ${post.links.map(l => `<a href="${escapeHtml(l)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l)}</a>`).join('')}
-    </div>` : '';
-
-    container.innerHTML = `<article>
-      <div class="section-header" style="text-align:left;margin-bottom:12px">
-        <h2>${escapeHtml(post.title)}</h2>
-      </div>
-      <div class="post-detail-meta" style="margin-bottom:24px">
-        <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(post.createdAt)}</span>
-        ${post.category ? `<span><i class="fa-regular fa-folder"></i> ${escapeHtml(post.category)}</span>` : ''}
-        <span><i class="fa-regular fa-clock"></i> 更新于 ${escapeHtml(post.updatedAt)}</span>
-      </div>
-      ${tagHtml ? `<div class="flex flex-wrap gap-1.5 mb-5">${tagHtml}</div>` : ''}
-      ${imageHtml}
-      ${fileHtml}
-      <div class="post-detail-body">${simpleMarkdown(post.content || '')}</div>
-      ${linkHtml}
-      ${isAdmin ? `<div class="mt-8 pt-4 border-t border-[var(--border-default)] flex gap-3">
-        <button class="edit-post-from-page px-4 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-post-id="${post.id}">
-          <i class="fa-solid fa-pen-to-square mr-1.5"></i>编辑</button>
-      </div>` : ''}
-    </article>`;
-
-    // 图片点击放大
-    container.querySelectorAll('.post-detail-images img').forEach(img => {
-      img.addEventListener('click', () => window.open(img.src, '_blank'));
-    });
-
-    // 编辑按钮
-    const editBtn = container.querySelector('.edit-post-from-page');
-    if (editBtn) editBtn.addEventListener('click', () => openEditor(editBtn.dataset.postId));
-  }
-
   // ── 初始化 ────────────────────────────────────────
   async function init() {
     bindEvents();
-    // 检查 URL 参数：有 id → 渲染单篇文章内页
-    const params = new URLSearchParams(location.search);
-    const postId = params.get('id');
-    if (postId) {
-      await fetchPosts();
-      const post = posts.find(p => p.id === postId);
-      if (post) {
-        renderPostPage(post);
-        // 管理员模式下也加载 auth
-        if (loadToken()) {
-          await checkAuth();
-        }
-      } else {
-        // 文章不存在，显示列表
-        const container = $('#journal-list');
-        if (container) container.innerHTML = `<div class="empty-state">
-          <div class="empty-icon"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i></div>
-          <p class="empty-title">文章未找到</p>
-          <p class="empty-desc"><a href="journal.html" class="text-neon-blue underline">← 返回列表</a></p>
-        </div>`;
-      }
-      return;
-    }
     await fetchPosts();
   }
 

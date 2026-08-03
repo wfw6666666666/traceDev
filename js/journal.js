@@ -147,7 +147,7 @@
         const res = await fetch('/api/posts');
         posts = await res.json();
       } else {
-        const res = await fetch('/data/posts.json');
+        const res = await fetch('data/posts.json');
         if (res.ok) posts = await res.json();
         else posts = [];
       }

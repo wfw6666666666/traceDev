@@ -13,6 +13,8 @@
   const POSTS_PATH = 'data/posts.json';
   const DEFAULT_REPO = 'wfw6666666666/traceDev';
   const DEFAULT_BRANCH = 'master';
+  const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+  const AI_MODEL = 'claude-sonnet-4-6';
 
   let ghToken = null;
   let ghRepo = DEFAULT_REPO;
@@ -21,8 +23,11 @@
   let isAdmin = false;
   let posts = [];
   let editingPostId = null;
+  let aiKey = null;  // Anthropic API key
 
   const $ = (sel) => document.querySelector(sel);
+  const b64e = (s) => btoa(unescape(encodeURIComponent(s)));
+  const b64d = (s) => decodeURIComponent(escape(atob(s)));
 
   // ── 解密内嵌 Token（key = 密码哈希前32位）───────
   function decryptEmbeddedToken() {
@@ -33,6 +38,165 @@
       const pad = key.repeat(Math.ceil(dec.length / key.length) + 1).slice(0, dec.length);
       return dec.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ pad.charCodeAt(i))).join('');
     } catch { return null; }
+  }
+
+  // ── AI Key 管理（加密存 localStorage）───────────
+  function loadAiKey() {
+    try {
+      const raw = localStorage.getItem('tracedev_ai_key');
+      if (!raw) return false;
+      const dec = b64d(raw);
+      const key = PASSWORD_HASH.slice(0, 32);
+      const pad = key.repeat(Math.ceil(dec.length / key.length) + 1).slice(0, dec.length);
+      aiKey = dec.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ pad.charCodeAt(i))).join('');
+      return aiKey.startsWith('sk-ant');
+    } catch { return false; }
+  }
+
+  function saveAiKey(k) {
+    const key = PASSWORD_HASH.slice(0, 32);
+    const pad = key.repeat(Math.ceil(k.length / key.length) + 1).slice(0, k.length);
+    const enc = k.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ pad.charCodeAt(i))).join('');
+    localStorage.setItem('tracedev_ai_key', b64e(enc));
+    aiKey = k;
+  }
+
+  function clearAiKey() {
+    localStorage.removeItem('tracedev_ai_key');
+    aiKey = null;
+  }
+
+  // ── AI 整理：调用 Claude API ─────────────────────
+  async function aiOrganize() {
+    if (!aiKey) {
+      alert('请先在「AI 设置」中配置 Anthropic API Key');
+      showAiSettings();
+      return false;
+    }
+
+    const title = $('#edit-title').value.trim();
+    const content = $('#edit-content').value.trim();
+    const category = $('#edit-category').value.trim();
+    const tags = $('#edit-tags').value.trim();
+    const links = $('#edit-links').value.trim();
+
+    if (!content && !title) {
+      alert('请先写一些内容或标题，AI 才能帮你整理');
+      return false;
+    }
+
+    const btn = $('#btn-ai-organize');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>AI 整理中...';
+    btn.disabled = true;
+
+    // 构建 prompt
+    const prompt = `你是一名资深技术文档编辑，擅长将零散的工程笔记整理成结构化、专业的技术文章。
+
+请根据以下内容，输出一篇完整的学习日志。要求：
+
+1. **标题**：如果用户已有标题则保留优化，否则根据内容提炼一个精准标题
+2. **结构**：使用 Markdown 格式，包含 ## 二级标题分章节
+3. **排版**：
+   - 规格参数用表格或列表
+   - 代码/命令用 \`\`\` 代码块
+   - 关键概念用 **粗体** 标注
+   - 步骤用数字列表
+4. **知识拓展**：在相关章节末尾加 💡 提示，补充相关理论背景或进阶方向
+5. **保留所有原始信息**，不删减用户提供的任何数据
+
+---
+**用户原始内容：**
+
+标题：${title || '（无）'}
+分类：${category || '（无）'}
+标签：${tags || '（无）'}
+
+正文：
+${content || '（无正文，请根据标题和分类生成大纲框架）'}
+
+${links ? '参考链接：\n' + links : ''}
+
+---
+请直接输出整理后的 Markdown 正文（不要用代码块包裹）。`;
+
+    try {
+      const res = await fetch(ANTHROPIC_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': aiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 401) throw new Error('API Key 无效，请检查 Anthropic API Key');
+        throw new Error(err.error?.message || `API 错误 (${res.status})`);
+      }
+
+      const data = await res.json();
+      let result = data.content?.[0]?.text || '';
+
+      // 清理可能的代码块包裹
+      result = result.replace(/^```markdown\s*\n?/i, '').replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
+
+      // 尝试提取标题（第一行 # xxx）
+      const titleMatch = result.match(/^# (.+)$/m);
+      if (titleMatch && !$('#edit-title').value.trim()) {
+        $('#edit-title').value = titleMatch[1].trim();
+      }
+
+      // 移除第一行标题后填充正文
+      result = result.replace(/^# .+\n\n?/, '').trim();
+      $('#edit-content').value = result;
+
+      // 自动提取标签
+      if (!$('#edit-tags').value.trim()) {
+        const tagHints = result.match(/#(\S+)/g);
+        if (tagHints) {
+          const extracted = [...new Set(tagHints.map(t => t.replace('#', '')))].slice(0, 8);
+          $('#edit-tags').value = extracted.join(', ');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      alert('AI 整理失败: ' + e.message);
+      return false;
+    } finally {
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }
+  }
+
+  // ── AI 设置模态框 ───────────────────────────────
+  function showAiSettings() {
+    const modal = $('#ai-settings-modal');
+    if (!modal) return;
+    $('#ai-api-key').value = '';
+    $('#ai-settings-msg').classList.add('hidden');
+    modal.classList.remove('hidden');
+    setTimeout(() => $('#ai-api-key').focus(), 150);
+  }
+  function hideAiSettings() { $('#ai-settings-modal').classList.add('hidden'); }
+
+  function doSaveAiKey() {
+    const k = $('#ai-api-key').value.trim();
+    if (!k.startsWith('sk-ant')) {
+      alert('API Key 应以 sk-ant 开头。请在 https://console.anthropic.com/ 获取。');
+      return;
+    }
+    saveAiKey(k);
+    $('#ai-settings-msg').textContent = 'API Key 已保存！';
+    $('#ai-settings-msg').classList.remove('hidden');
+    setTimeout(hideAiSettings, 800);
   }
 
   // ── SHA-256 ──────────────────────────────────────
@@ -254,6 +418,7 @@
 
       // 成功登录
       isAdmin = true;
+      loadAiKey();
       hideLogin();
       updateAdminUI();
       await fetchPosts();
@@ -606,7 +771,13 @@
     $('#login-overlay')?.addEventListener('click', hideLogin);
     $('#login-modal .close-login')?.addEventListener('click', hideLogin);
     $('#btn-logout')?.addEventListener('click', doLogout);
+    $('#btn-ai-settings')?.addEventListener('click', showAiSettings);
+    $('#btn-ai-save-key')?.addEventListener('click', doSaveAiKey);
+    $('#ai-api-key')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSaveAiKey(); });
+    $('#ai-settings-overlay')?.addEventListener('click', hideAiSettings);
+    $('#ai-settings-modal .close-ai-settings')?.addEventListener('click', hideAiSettings);
     $('#btn-new-post')?.addEventListener('click', () => openEditor(null));
+    $('#btn-ai-organize')?.addEventListener('click', aiOrganize);
     $('#editor-overlay')?.addEventListener('click', closeEditor);
     $('#editor-modal .close-editor')?.addEventListener('click', closeEditor);
     $('#btn-save-post')?.addEventListener('click', savePost);

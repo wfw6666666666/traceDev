@@ -90,10 +90,14 @@
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>AI 整理中...';
     btn.disabled = true;
 
-    // 构建 prompt
-    const prompt = `你是一名资深技术文档编辑，擅长将零散的工程笔记整理成结构化、专业的技术文章。
+    // 获取已上传的图片 URL
+    const p = window._journalPending || { images: [], files: [] };
+    const imageUrls = p.images.filter(i => i.done && i.url).map(i => i.url);
 
-请根据以下内容，输出一篇完整的学习日志。要求：
+    // 构建 prompt 文本
+    const promptText = `你是一名资深技术文档编辑，擅长将零散的工程笔记整理成结构化、专业的技术文章。
+
+请根据以下内容${imageUrls.length > 0 ? '（含上传的截图/照片）' : ''}，输出一篇完整的学习日志。要求：
 
 1. **标题**：如果用户已有标题则保留优化，否则根据内容提炼一个精准标题
 2. **结构**：使用 Markdown 格式，包含 ## 二级标题分章节
@@ -102,8 +106,9 @@
    - 代码/命令用 \`\`\` 代码块
    - 关键概念用 **粗体** 标注
    - 步骤用数字列表
-4. **知识拓展**：在相关章节末尾加 💡 提示，补充相关理论背景或进阶方向
-5. **保留所有原始信息**，不删减用户提供的任何数据
+4. **图片分析**：仔细分析上传的图片内容（电路图、PCB截图、波形、实物照片等），将其中的关键信息（型号、参数、连线方式、测试数据等）提取到正文中
+5. **知识拓展**：在相关章节末尾加 💡 提示，补充相关理论背景或进阶方向
+6. **保留所有原始信息**，不删减用户提供的任何数据
 
 ---
 **用户原始内容：**
@@ -113,12 +118,21 @@
 标签：${tags || '（无）'}
 
 正文：
-${content || '（无正文，请根据标题和分类生成大纲框架）'}
+${content || '（无正文，请根据标题、分类和图片内容生成大纲框架）'}
 
 ${links ? '参考链接：\n' + links : ''}
 
 ---
 请直接输出整理后的 Markdown 正文（不要用代码块包裹）。`;
+
+    // 构建多模态消息（文本 + 图片）
+    const userContent = [{ type: 'text', text: promptText }];
+    for (const imgUrl of imageUrls) {
+      userContent.push({
+        type: 'image_url',
+        image_url: { url: imgUrl }
+      });
+    }
 
     try {
       const res = await fetch(ANTHROPIC_API, {
@@ -130,7 +144,7 @@ ${links ? '参考链接：\n' + links : ''}
         body: JSON.stringify({
           model: AI_MODEL,
           max_tokens: 4096,
-          messages: [{ role: 'user', content: prompt }],
+          messages: [{ role: 'user', content: userContent }],
         }),
       });
 
@@ -815,6 +829,23 @@ ${links ? '参考链接：\n' + links : ''}
     $('#edit-image-input')?.addEventListener('change', (e) => {
       if (e.target.files.length > 0) handleFileSelect(e.target.files, 'image');
       e.target.value = '';
+    });
+    // 粘贴图片：在编辑器任意位置 Ctrl+V 图片自动上传
+    $('#editor-modal')?.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (blob) {
+            const ext = item.type.split('/')[1] || 'png';
+            const file = new File([blob], `paste_${Date.now()}.${ext}`, { type: item.type });
+            handleFileSelect([file], 'image');
+          }
+          break;
+        }
+      }
     });
     $('#edit-file-input')?.addEventListener('change', (e) => {
       if (e.target.files.length > 0) handleFileSelect(e.target.files, 'file');

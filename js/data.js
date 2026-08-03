@@ -8,7 +8,7 @@
 const SITE_CONFIG = {
   title: 'TraceDev',
   slogan: '你的专属技术资源库',
-  description: '嵌入式开发 / 单片机 / Linux 等技术教程与资源分享平台',
+  description: '嵌入式开发 / 单片机 / STM32 等技术教程与资源分享平台',
   copyright: '© 2024 TraceDev. All rights reserved.',
   备案号: '鄂ICP备2024XXXXXXXX号-X',
   email: '3318234704@qq.com',
@@ -270,7 +270,7 @@ const AUTHOR = {
   name: 'TraceDev',
   tagline: '嵌入式工程师 / 全栈开发者 / 技术分享者',
   avatar: '',
-  bio: '一名热爱技术与分享的嵌入式工程师。多年嵌入式开发经验，专注于STM32、Linux、RTOS等领域。希望通过清晰易懂的教程和高质量的资源，帮助更多技术爱好者少走弯路。',
+  bio: '一名热爱技术与分享的嵌入式工程师。多年嵌入式开发经验，专注于STM32、RTOS、PCB设计等领域。希望通过清晰易懂的教程和高质量的资源，帮助更多技术爱好者少走弯路。',
   links: [
     { label: 'B站', icon: 'fa-brands fa-bilibili', url: 'https://space.bilibili.com/514682107' },
     { label: '抖音', icon: 'fa-brands fa-tiktok', url: 'https://www.douyin.com/user/self?from_tab_name=main' },
@@ -279,7 +279,7 @@ const AUTHOR = {
   ],
   skills: [
     { name: 'STM32 / 嵌入式', level: 90 },
-    { name: 'Linux / RTOS', level: 85 },
+    { name: 'RTOS / 驱动开发', level: 80 },
     { name: 'PCB 设计', level: 75 },
     { name: '全栈开发', level: 70 },
   ],

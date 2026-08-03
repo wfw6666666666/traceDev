@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="empty-state">
           <div class="empty-icon"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
           <p class="empty-title">教程筹备中</p>
-          <p class="empty-desc">正在录制第一批嵌入式教学视频，涵盖 STM32、Linux、PCB 等方向，敬请期待</p>
+          <p class="empty-desc">正在录制第一批嵌入式教学视频，涵盖 STM32、PCB、电源设计等方向，敬请期待</p>
         </div>
       `;
     } else {

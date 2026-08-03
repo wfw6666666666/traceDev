@@ -127,7 +127,9 @@
     if (isAdmin && ghToken) return 'github';
     try {
       const res = await fetch('/api/check-auth');
-      if (res.ok) return 'flask';
+      // 必须是 JSON 响应才算 Flask 可用（排除 GitHub Pages 的 HTML 回退）
+      const ct = res.headers.get('content-type') || '';
+      if (res.ok && ct.includes('application/json')) return 'flask';
     } catch {}
     return 'readonly';
   }

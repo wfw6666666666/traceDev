@@ -122,17 +122,11 @@ ${content || '（无正文，请根据标题、分类和图片内容生成大纲
 
 ${links ? '参考链接：\n' + links : ''}
 
----
-请直接输出整理后的 Markdown 正文（不要用代码块包裹）。`;
+  Uploaded image URLs:
+  ${imageUrls.length > 0 ? imageUrls.map(u => `- ${u}`).join('\n') : '（无）'}
 
-    // 构建多模态消息（文本 + 图片）
-    const userContent = [{ type: 'text', text: promptText }];
-    for (const imgUrl of imageUrls) {
-      userContent.push({
-        type: 'image_url',
-        image_url: { url: imgUrl }
-      });
-    }
+  ---
+  请直接输出整理后的 Markdown 正文（不要用代码块包裹）。提醒：图片链接已列出，如有能用URL读取图片内容请分析其中信息。`;
 
     try {
       const res = await fetch(ANTHROPIC_API, {
@@ -144,7 +138,7 @@ ${links ? '参考链接：\n' + links : ''}
         body: JSON.stringify({
           model: AI_MODEL,
           max_tokens: 4096,
-          messages: [{ role: 'user', content: userContent }],
+          messages: [{ role: 'user', content: promptText }],
         }),
       });
 

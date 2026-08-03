@@ -310,7 +310,8 @@ ${links ? '参考链接：\n' + links : ''}
         const res = await fetch('/api/posts');
         posts = await res.json();
       } else {
-        const res = await fetch('data/posts.json');
+        // 普通用户从静态文件读取，加时间戳防缓存
+        const res = await fetch('data/posts.json?t=' + Date.now());
         if (res.ok) posts = await res.json();
         else posts = [];
       }
@@ -324,9 +325,40 @@ ${links ? '参考链接：\n' + links : ''}
   }
 
   async function savePostsToGitHub(commitMsg) {
-    const sorted = [...posts].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    const result = await ghWrite(POSTS_PATH, sorted, postsSha, commitMsg);
-    postsSha = result.sha;
+    // 重要：先重新获取最新 SHA，避免冲突
+    try {
+      const latest = await ghRead(POSTS_PATH);
+      // 合并文章：用本地版本替换/插入
+      const remotePosts = Array.isArray(latest.content) ? latest.content : [];
+      const merged = [...remotePosts];
+      for (const p of posts) {
+        const idx = merged.findIndex(r => r.id === p.id);
+        if (idx >= 0) merged[idx] = p;
+        else merged.push(p);
+      }
+      const sorted = merged.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      const result = await ghWrite(POSTS_PATH, sorted, latest.sha, commitMsg);
+      postsSha = result.sha;
+      posts = sorted; // 更新本地缓存
+    } catch (e) {
+      // 如果仍然失败（并发冲突），重试一次
+      if (e.message.includes('does not match') || e.message.includes('409')) {
+        const latest = await ghRead(POSTS_PATH);
+        const remotePosts = Array.isArray(latest.content) ? latest.content : [];
+        const merged = [...remotePosts];
+        for (const p of posts) {
+          const idx = merged.findIndex(r => r.id === p.id);
+          if (idx >= 0) merged[idx] = p;
+          else merged.push(p);
+        }
+        const sorted = merged.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        const result = await ghWrite(POSTS_PATH, sorted, latest.sha, commitMsg);
+        postsSha = result.sha;
+        posts = sorted;
+      } else {
+        throw e;
+      }
+    }
   }
 
   // ── 认证 UI ──────────────────────────────────────

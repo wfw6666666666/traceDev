@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TraceDev 学习日志 — 记录嵌入式开发学习过程" />
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: { neon: { blue: '#00d4ff', purple: '#7c3aed', cyan: '#06f7f7' } },
+        },
+      },
+    };
+  </script>
+  <title>学习日志 · TraceDev</title>
+</head>
+<body class="bg-[var(--bg-body)] text-[var(--text-primary)] font-sans antialiased min-h-screen flex flex-col">
+
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-black focus:rounded-lg">跳到主要内容</a>
+
+  <div class="ambient-glow--top-left"></div>
+  <div class="ambient-glow--bottom-right"></div>
+
+  <!-- 顶部导航栏 -->
+  <header id="navbar" class="fixed top-0 inset-x-0 z-50">
+    <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-4">
+        <a href="./" class="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-sm font-medium">
+          <i class="fa-solid fa-arrow-left mr-1"></i>返回主页
+        </a>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-bold text-neon-blue hidden sm:inline">📖 学习日志</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="admin-btn" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text-dim)] hover:text-neon-blue hover:bg-[var(--bg-social)] border border-transparent hover:border-[var(--border-default)] transition-all duration-300" aria-label="管理员登录" title="管理员登录">
+          <i class="fa-solid fa-lock text-xs"></i>
+        </button>
+        <button id="theme-toggle" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text-secondary)] hover:text-neon-blue hover:bg-[var(--bg-social)] border border-[var(--border-default)] transition-all duration-300" aria-label="切换主题">
+          <i class="fa-regular fa-sun"></i>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- 主内容 -->
+  <main id="main-content" class="flex-1 pt-20 pb-12">
+    <section class="py-6 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full">
+      <div class="section-header">
+        <h2>📖 学习日志</h2>
+        <p>记录学习过程 · 分享技术心得 · 巩固知识体系</p>
+      </div>
+
+      <!-- 管理员操作栏 -->
+      <div id="journal-admin-bar" class="hidden mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-card)]">
+          <div class="flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-user-shield text-neon-blue"></i>
+            <span class="text-[var(--text-secondary)]">管理员模式 · <span id="admin-repo-name" class="text-neon-blue font-mono text-xs"></span></span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="btn-new-post" class="px-4 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+              <i class="fa-solid fa-plus mr-1.5"></i>新建日志
+            </button>
+            <button id="btn-ai-settings" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-purple-400 transition-colors" title="AI 设置">
+              <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>AI 设置
+            </button>
+            <button id="btn-logout" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-red-400 transition-colors">
+              <i class="fa-solid fa-right-from-bracket mr-1.5"></i>退出
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分类筛选 -->
+      <div class="flex items-center gap-2 mb-6 overflow-x-auto" id="journal-tags-filter">
+        <button class="journal-tag-btn active px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer bg-neon-blue/10 border-neon-blue/30 text-neon-blue" data-tag="all">全部</button>
+      </div>
+
+      <!-- 文章列表 -->
+      <div class="space-y-5" id="journal-list">
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></div>
+          <p class="empty-title">暂无学习日志</p>
+          <p class="empty-desc">学习日志即将上线，记录嵌入式开发的学习历程</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 登录模态框 -->
+  <div id="login-modal" class="fixed inset-0 z-[110] flex items-center justify-center px-4 hidden">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="login-overlay"></div>
+    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-login" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+      <h3 class="text-xl font-bold text-[var(--text-primary)] mb-2">管理员登录</h3>
+      <p class="text-xs text-[var(--text-muted)] mb-6">输入密码以管理学习日志</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">密码</label>
+          <input id="login-password" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="请输入管理员密码" autocomplete="current-password" />
+        </div>
+        <p id="login-error" class="text-xs text-red-400 hidden"></p>
+        <button id="btn-login-submit" class="w-full py-2.5 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+          <i class="fa-solid fa-right-to-bracket mr-1.5"></i>登录
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 设置模态框 -->
+  <div id="ai-settings-modal" class="fixed inset-0 z-[130] flex items-center justify-center px-4 hidden">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="ai-settings-overlay"></div>
+    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-ai-settings" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+      <h3 class="text-xl font-bold text-[var(--text-primary)] mb-2">🤖 AI 设置</h3>
+      <p class="text-xs text-[var(--text-muted)] mb-5">配置 DeepSeek API Key，AI 帮你整理排版学习笔记</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">DeepSeek API Key</label>
+          <input id="ai-api-key" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-purple-400 font-mono" placeholder="sk-xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+        </div>
+        <div class="p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-subtle)]">
+          <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+            💡 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" class="text-purple-400 underline">获取 DeepSeek API Key</a>（价格极低，新用户送额度）
+          </p>
+        </div>
+        <p id="ai-settings-msg" class="text-xs text-green-400 hidden"></p>
+        <button id="btn-ai-save-key" class="w-full py-2.5 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors active:scale-95">
+          <i class="fa-solid fa-check mr-1.5"></i>保存
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 文章编辑器模态框 -->
+  <div id="editor-modal" class="fixed inset-0 z-[120] flex items-start justify-center px-4 pt-12 pb-12 overflow-y-auto hidden">
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="editor-overlay"></div>
+    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <h3 id="editor-title-label" class="text-xl font-bold text-[var(--text-primary)]">新建学习日志</h3>
+        <button class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-editor" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-5">
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">标题 *</label>
+          <input id="edit-title" type="text" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="例：反激变压器设计笔记" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">分类</label>
+            <input id="edit-category" type="text" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="例：电源设计" />
+          </div>
+          <div>
+            <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">标签（逗号分隔）</label>
+            <input id="edit-tags" type="text" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="例：变压器, 电源, 反激" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">正文（支持 Markdown）</label>
+          <textarea id="edit-content" rows="14" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue resize-y font-mono leading-relaxed" placeholder="在此撰写你的学习笔记...&#10;&#10;# 反激变压器设计&#10;&#10;## 一、设计规格&#10;- 输入电压：AC 85-265V&#10;- 输出：12V/2A&#10;..."></textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">图片</label>
+          <div id="edit-images-preview" class="flex flex-wrap gap-3 mb-3"></div>
+          <label class="px-4 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm cursor-pointer hover:border-neon-blue hover:text-neon-blue transition-colors inline-flex items-center gap-1.5">
+            <i class="fa-solid fa-image"></i> 上传图片
+            <input type="file" accept="image/*" class="hidden" id="edit-image-input" multiple />
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">附件</label>
+          <div id="edit-files-preview" class="space-y-2 mb-3"></div>
+          <label class="px-4 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm cursor-pointer hover:border-neon-blue hover:text-neon-blue transition-colors inline-flex items-center gap-1.5">
+            <i class="fa-solid fa-paperclip"></i> 上传附件
+            <input type="file" class="hidden" id="edit-file-input" multiple />
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">参考链接（每行一个）</label>
+          <textarea id="edit-links" rows="3" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue resize-y font-mono" placeholder="https://example.com/ref1"></textarea>
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
+          <button id="btn-delete-post" class="px-4 py-2 rounded-lg bg-red-400/10 border border-red-400/30 text-red-400 text-sm hover:bg-red-400/20 transition-colors hidden"><i class="fa-solid fa-trash mr-1.5"></i>删除</button>
+          <div class="flex items-center gap-3 ml-auto">
+            <button class="close-editor px-4 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-[var(--text-primary)] transition-colors">取消</button>
+            <button id="btn-ai-organize" class="px-4 py-2 rounded-lg bg-purple-500/15 border border-purple-400/30 text-purple-400 text-sm font-medium hover:bg-purple-500/25 transition-colors active:scale-95"><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>AI 整理</button>
+            <button id="btn-save-post" class="px-6 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存发布</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 文章详情模态框 -->
+  <div id="post-detail-modal" class="fixed inset-0 z-[115] flex items-start justify-center px-4 pt-12 pb-12 overflow-y-auto hidden">
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="post-detail-overlay"></div>
+    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-post-detail" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+      <article id="post-detail-content"></article>
+    </div>
+  </div>
+
+  <!-- 回到顶部 -->
+  <button id="back-to-top" aria-label="回到顶部"><i class="fa-solid fa-arrow-up"></i></button>
+
+  <script src="js/journal.js?v=9"></script>
+
+  <!-- 主题切换（独立页面版） -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const htmlEl = document.documentElement;
+      const toggleBtn = document.getElementById('theme-toggle');
+      function getTheme() { return htmlEl.getAttribute('data-theme') || 'dark'; }
+      function setTheme(theme) {
+        htmlEl.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        const icon = theme === 'dark' ? 'fa-sun' : 'fa-moon';
+        if (toggleBtn) toggleBtn.innerHTML = `<i class="fa-regular ${icon}"></i>`;
+      }
+      setTheme(getTheme());
+      toggleBtn?.addEventListener('click', () => setTheme(getTheme() === 'dark' ? 'light' : 'dark'));
+
+      // 导航栏滚动效果
+      const navbar = document.getElementById('navbar');
+      window.addEventListener('scroll', () => {
+        navbar?.classList.toggle('navbar-scrolled', window.scrollY > 40);
+      }, { passive: true });
+
+      // 回到顶部
+      const backToTop = document.getElementById('back-to-top');
+      if (backToTop) {
+        window.addEventListener('scroll', () => backToTop.classList.toggle('visible', window.scrollY > 400), { passive: true });
+        backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      }
+    });
+  </script>
+</body>
+</html>

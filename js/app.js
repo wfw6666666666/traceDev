@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     videos: document.getElementById('panel-videos'),
     store: document.getElementById('panel-store'),
     downloads: document.getElementById('panel-downloads'),
+    journal: document.getElementById('panel-journal'),
     faq: document.getElementById('panel-faq'),
     about: document.getElementById('panel-about'),
   };

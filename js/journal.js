@@ -1,21 +1,19 @@
 /**
  * ============================================================
  *  TraceDev · 学习日志系统
- *  密码登录 + GitHub API 在线编辑
- *  密码哈希硬编码，Token 加密存 localStorage
+ *  密码登录 → 自动解密内嵌 GitHub Token → 在线编辑
  * ============================================================
  */
 (function () {
   'use strict';
 
-  // ── 密码哈希（SHA-256，仅用于验证，不暴露原始密码）──
+  const ENC_TOKEN = "";
   const PASSWORD_HASH = '8be87c83329cc5b04a1cb883c346b897002661b61b0e87011cd92c979c08356d';
   const GITHUB_API = 'https://api.github.com';
   const POSTS_PATH = 'data/posts.json';
   const DEFAULT_REPO = 'wfw6666666666/traceDev';
   const DEFAULT_BRANCH = 'master';
 
-  // ── 状态 ──────────────────────────────────────────
   let ghToken = null;
   let ghRepo = DEFAULT_REPO;
   let ghBranch = DEFAULT_BRANCH;
@@ -26,60 +24,25 @@
 
   const $ = (sel) => document.querySelector(sel);
 
-  // ── SHA-256（浏览器原生）─────────────────────────
-  async function sha256(text) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  // ── 简单 XOR 加密/解密（用密码保护 Token）──────
-  function xorCrypt(text, key) {
-    const repeatTimes = Math.ceil(text.length / key.length) + 1;
-    const k = key.repeat(repeatTimes).slice(0, text.length);
-    return text.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ k.charCodeAt(i))).join('');
-  }
-
-  function encryptWithPassword(plaintext, password) {
-    const xored = xorCrypt(plaintext, password);
-    return btoa(unescape(encodeURIComponent(xored)));
-  }
-
-  function decryptWithPassword(ciphertext, password) {
-    const xored = decodeURIComponent(escape(atob(ciphertext)));
-    return xorCrypt(xored, password);
-  }
-
-  // ── Token 管理 ────────────────────────────────────
-  function loadToken(password) {
+  // ── 解密内嵌 Token（key = 密码哈希前32位）───────
+  function decryptEmbeddedToken() {
+    if (!ENC_TOKEN) return null;
     try {
-      const saved = JSON.parse(localStorage.getItem('tracedev_auth') || '{}');
-      if (saved.enc_token && password) {
-        const token = decryptWithPassword(saved.enc_token, password);
-        ghToken = token;
-        ghRepo = saved.repo || DEFAULT_REPO;
-        ghBranch = saved.branch || DEFAULT_BRANCH;
-        isAdmin = true;
-        return true;
-      }
-    } catch {}
-    return false;
+      const dec = atob(ENC_TOKEN);
+      const key = PASSWORD_HASH.slice(0, 32);
+      const pad = key.repeat(Math.ceil(dec.length / key.length) + 1).slice(0, dec.length);
+      return dec.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ pad.charCodeAt(i))).join('');
+    } catch { return null; }
   }
 
-  function saveToken(password) {
-    if (!ghToken || !password) return;
-    const enc = encryptWithPassword(ghToken, password);
-    localStorage.setItem('tracedev_auth', JSON.stringify({
-      enc_token: enc,
-      repo: ghRepo,
-      branch: ghBranch,
-    }));
+  // ── SHA-256 ──────────────────────────────────────
+  async function sha256(text) {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   function clearAuth() {
-    localStorage.removeItem('tracedev_auth');
     ghToken = null;
     postsSha = null;
     isAdmin = false;
@@ -252,61 +215,42 @@
 
     try {
       const hash = await sha256(pw);
-      if (hash !== PASSWORD_HASH) {
-        throw new Error('密码错误');
+      if (hash !== PASSWORD_HASH) throw new Error('密码错误');
+
+      // 按优先级尝试获取 Token:
+      // 1. 从代码内嵌的 ENC_TOKEN 解密
+      // 2. 从 localStorage 解密
+      let token = null;
+
+      if (ENC_TOKEN) {
+        token = decryptEmbeddedToken();
+        if (!token || !token.startsWith('ghp_')) token = null;
       }
 
-      // 密码正确，尝试从 localStorage 恢复 Token
-      if (loadToken(pw)) {
-        // 已有 Token，验证是否有效
+      if (!token) {
         try {
-          const [owner, repo] = ghRepo.split('/');
-          const url = `${GITHUB_API}/repos/${owner}/${repo}`;
-          const res = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' },
-          });
-          if (res.ok) {
-            hideLogin();
-            updateAdminUI();
-            await fetchPosts();
-            return;
+          const saved = JSON.parse(localStorage.getItem('tracedev_auth') || '{}');
+          if (saved.enc_token) {
+            const xored = decodeURIComponent(escape(atob(saved.enc_token)));
+            const repeat = Math.ceil(xored.length / pw.length) + 1;
+            const key = pw.repeat(repeat).slice(0, xored.length);
+            token = xored.split('').map((c,i) => String.fromCharCode(c.charCodeAt(0)^key.charCodeAt(i))).join('');
           }
         } catch {}
-        // Token 无效，清除
-        clearAuth();
-        isAdmin = false;
       }
 
-      // 没有 Token 或 Token 无效，提示输入
-      const token = prompt(
-        '🔑 首次登录需要配置 GitHub Token\n\n' +
-        '1. 打开 https://github.com/settings/tokens\n' +
-        '2. Generate new token (classic)\n' +
-        '3. 勾选 repo 权限，生成后复制\n\n' +
-        '请粘贴你的 GitHub Token:'
-      );
-      if (!token || !token.startsWith('ghp_')) {
-        throw new Error('Token 格式不正确（应以 ghp_ 开头）');
-      }
+      if (!token) throw new Error('未找到 GitHub Token。请在本地运行 python3 _gen_token.py 生成内嵌 Token。');
 
       // 验证 Token
       ghToken = token;
-      ghRepo = DEFAULT_REPO;
-      ghBranch = DEFAULT_BRANCH;
-      try {
-        const [owner, repo] = ghRepo.split('/');
-        const url = `${GITHUB_API}/repos/${owner}/${repo}`;
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' },
-        });
-        if (!res.ok) throw new Error('Token 验证失败');
-      } catch (e) {
-        ghToken = null;
-        throw new Error('Token 无效或已过期');
-      }
+      const [owner, repo] = ghRepo.split('/');
+      const url = `${GITHUB_API}/repos/${owner}/${repo}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github.v3+json' },
+      });
+      if (!res.ok) throw new Error('Token 已过期，请重新生成并运行 _gen_token.py');
 
-      // Token 有效，加密保存
-      saveToken(pw);
+      // 成功登录
       isAdmin = true;
       hideLogin();
       updateAdminUI();

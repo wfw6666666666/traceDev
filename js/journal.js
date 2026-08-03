@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const ENC_TOKEN = "";
+  const ENC_TOKEN = "XwoVZwACXml4ClIwFAEUUUc4aSowW3JhBWNfQwdUa15oVVRaXxpyBg==";
   const PASSWORD_HASH = '8be87c83329cc5b04a1cb883c346b897002661b61b0e87011cd92c979c08356d';
   const GITHUB_API = 'https://api.github.com';
   const POSTS_PATH = 'data/posts.json';

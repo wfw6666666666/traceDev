@@ -1,5 +1,6 @@
 # Flask 敏感数据 — 不要推送！
 data/admin.json
 data/.secret
+token.txt
 *.pyc
 __pycache__/

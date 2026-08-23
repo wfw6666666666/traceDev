@@ -12,7 +12,7 @@ assert.match(css, /\.search-box\.search-open input/, 'mobile search needs an exp
 assert.match(css, /\[data-theme='dark'\] \.summary-icon/, 'dark theme needs summary icon overrides');
 assert.match(css, /\[data-theme='dark'\] \.mobile-tab\.active/, 'dark theme needs mobile navigation overrides');
 assert.match(fs.readFileSync('js/app.js', 'utf8'), /searchBox\.classList\.add\('search-open'\)/, 'mobile search must be opened by interaction');
-assert.doesNotMatch(css, /#c05621|#f6f2ec|#efe9df|#e5ddd0|#f4a04b|#f2aa5c/i, 'legacy brown and orange palette must be removed');
+assert.doesNotMatch(css, /#c05621|#f6f2ec|#efe9df|#e5ddd0|#f4a04b|#f2aa5c|#a44725|#84381f|#cf7149|#e18b63|#f3f0e9|#fbfaf7/i, 'legacy brown and orange palette must be removed');
 assert.match(html, /class="dashboard-summary"/, 'dashboard summary must remain available');
 
 console.log('workspace theme verification passed.');

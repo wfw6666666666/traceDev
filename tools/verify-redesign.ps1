@@ -15,7 +15,7 @@ $requiredHtml = @(
   'site-search',
   'quick-access',
   'dashboard-summary',
-  'css/style.css?v=14',
+  'css/style.css?v=15',
   'data-i18n-aria-label="dashboard.overview"',
   'metric-video-count',
   'activity-panel',

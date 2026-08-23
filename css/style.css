@@ -864,36 +864,36 @@ body::before {
    This layer deliberately overrides the earlier card-heavy skin.
    ============================================================ */
 :root {
-  --paper: #f3f0e9;
-  --paper-raised: #fbfaf7;
-  --paper-muted: #ebe6dc;
-  --ink: #242321;
-  --ink-soft: #625f59;
-  --ink-muted: #8a857c;
-  --line: #d8d2c7;
-  --line-strong: #aaa297;
-  --brand: #a44725;
-  --brand-hover: #84381f;
-  --green: #356646;
-  --red: #a33a32;
+  --paper: #eef4f8;
+  --paper-raised: #ffffff;
+  --paper-muted: #e4eef5;
+  --ink: #1d3449;
+  --ink-soft: #526e82;
+  --ink-muted: #718b9d;
+  --line: #d7e4ed;
+  --line-strong: #abc7d9;
+  --brand: #2f9fe5;
+  --brand-hover: #1976b9;
+  --green: #36b982;
+  --red: #d8667a;
   --radius-sm: 4px;
   --radius-md: 6px;
-  --shadow-soft: 0 8px 24px rgba(48, 41, 31, 0.12);
+  --shadow-soft: 0 8px 24px rgba(39, 86, 121, 0.10);
 }
 
 [data-theme='dark'] {
-  --paper: #191816;
-  --paper-raised: #211f1c;
-  --paper-muted: #2b2824;
-  --ink: #efebe3;
-  --ink-soft: #c2bbb0;
-  --ink-muted: #8f887d;
-  --line: #3b3731;
-  --line-strong: #5a534a;
-  --brand: #cf7149;
-  --brand-hover: #e18b63;
-  --green: #82ad8d;
-  --red: #df8076;
+  --paper: #172530;
+  --paper-raised: #203442;
+  --paper-muted: #2b4353;
+  --ink: #eaf5fb;
+  --ink-soft: #c9dce8;
+  --ink-muted: #9eb8c8;
+  --line: #385363;
+  --line-strong: #5f849b;
+  --brand: #3ba7eb;
+  --brand-hover: #2786c4;
+  --green: #50cf96;
+  --red: #e38a98;
   --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.24);
 }
 

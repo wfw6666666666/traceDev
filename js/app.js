@@ -138,24 +138,56 @@ document.addEventListener('DOMContentLoaded', () => {
   }[char]));
 
   const searchIndex = [];
+  let searchSuggestions = [];
+
+  function addSearchIndexEntry(entry) {
+    if (!entry || !entry.title || !entry.tab) return;
+    searchIndex.push({
+      title: String(entry.title),
+      description: String(entry.description || ''),
+      meta: String(entry.meta || ''),
+      tab: entry.tab,
+      icon: entry.icon || 'fa-magnifying-glass',
+      source: entry.source || 'static',
+    });
+  }
+
   if (typeof VIDEOS !== 'undefined') {
-    VIDEOS.filter((item) => item.published).forEach((item) => searchIndex.push({
+    VIDEOS.filter((item) => item.published).forEach((item) => addSearchIndexEntry({
       title: item.title, description: item.description, meta: item.date, tab: 'videos', icon: 'fa-film',
     }));
   }
   if (typeof RESOURCES !== 'undefined') {
-    RESOURCES.filter((item) => item.published).forEach((item) => searchIndex.push({
+    RESOURCES.filter((item) => item.published).forEach((item) => addSearchIndexEntry({
       title: item.name, description: item.description, meta: item.category || '资源', tab: 'downloads', icon: 'fa-folder-open',
     }));
   }
   if (typeof PRODUCTS !== 'undefined') {
-    PRODUCTS.filter((item) => item.published !== false).forEach((item) => searchIndex.push({
+    PRODUCTS.filter((item) => item.published !== false).forEach((item) => addSearchIndexEntry({
       title: item.name, description: item.description, meta: item.price || '商品', tab: 'store', icon: 'fa-bag-shopping',
     }));
   }
   if (typeof FAQS !== 'undefined') {
-    FAQS.forEach((item) => searchIndex.push({
+    FAQS.forEach((item) => addSearchIndexEntry({
       title: item.question, description: item.answer, meta: 'FAQ', tab: 'faq', icon: 'fa-circle-question',
+    }));
+  }
+  if (typeof AUTHOR !== 'undefined') {
+    addSearchIndexEntry({
+      title: AUTHOR.name,
+      description: `${AUTHOR.tagline} ${AUTHOR.bio} ${(AUTHOR.skills || []).map((skill) => skill.name).join(' ')}`,
+      meta: '作者与技能',
+      tab: 'about',
+      icon: 'fa-user',
+      source: 'author',
+    });
+    (AUTHOR.skills || []).forEach((skill) => addSearchIndexEntry({
+      title: skill.name,
+      description: `${AUTHOR.name} ${AUTHOR.tagline} ${AUTHOR.bio}`,
+      meta: '作者技能',
+      tab: 'about',
+      icon: 'fa-user-gear',
+      source: 'author',
     }));
   }
 
@@ -176,29 +208,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  searchIndex.forEach((item) => {
-    const sourceText = `${item.title} ${item.description || ''}`;
-    addSearchSuggestion(item.title, item, item.title);
+  function rebuildSearchSuggestions() {
+    searchSuggestionMap.clear();
+    searchIndex.forEach((item) => {
+      const sourceText = `${item.title} ${item.description || ''} ${item.meta || ''}`;
+      addSearchSuggestion(item.title, item, item.title);
 
-    const technicalTerms = [...new Set(sourceText.match(technicalTermPattern) || [])];
-    technicalTerms.forEach((term) => {
-      const canonicalTerm = term.toUpperCase() === 'WIFI' ? 'WiFi' : term;
-      addSearchSuggestion(canonicalTerm, item, canonicalTerm);
-      addSearchSuggestion(`${canonicalTerm} ${tabLabels[item.tab]}`, item, canonicalTerm);
-      if (/入门|零基础|快速上手/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 入门教程`, item, canonicalTerm);
-      if (/实战|项目|工程/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 项目实战`, item, canonicalTerm);
-      if (/设计|原理图|布局布线/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 设计教程`, item, canonicalTerm);
-      if (/通信|互联|协议/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 通信`, item, canonicalTerm);
+      const technicalTerms = [...new Set(sourceText.match(technicalTermPattern) || [])];
+      technicalTerms.forEach((term) => {
+        const canonicalTerm = term.toUpperCase() === 'WIFI' ? 'WiFi' : term;
+        addSearchSuggestion(canonicalTerm, item, canonicalTerm);
+        addSearchSuggestion(`${canonicalTerm} ${tabLabels[item.tab]}`, item, canonicalTerm);
+        if (/入门|零基础|快速上手/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 入门教程`, item, canonicalTerm);
+        if (/实战|项目|工程/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 项目实战`, item, canonicalTerm);
+        if (/设计|原理图|布局布线/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 设计教程`, item, canonicalTerm);
+        if (/通信|互联|协议/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 通信`, item, canonicalTerm);
+      });
     });
+    searchSuggestions = [...searchSuggestionMap.values()];
+  }
+
+  rebuildSearchSuggestions();
+
+  window.addEventListener('tracedev:journal-loaded', (event) => {
+    for (let i = searchIndex.length - 1; i >= 0; i -= 1) {
+      if (searchIndex[i].source === 'journal') searchIndex.splice(i, 1);
+    }
+    (Array.isArray(event.detail) ? event.detail : []).forEach((post) => addSearchIndexEntry({
+      title: post.title,
+      description: post.content,
+      meta: [post.category, ...(post.tags || [])].filter(Boolean).join(' '),
+      tab: 'journal',
+      icon: 'fa-book-open',
+      source: 'journal',
+    }));
+    rebuildSearchSuggestions();
+    const activeSearch = document.getElementById('site-search');
+    if (activeSearch) {
+      applyPanelSearch(activeSearch.value);
+      renderSearchResults(activeSearch.value);
+    }
   });
 
-  const searchSuggestions = [...searchSuggestionMap.values()];
   let searchSelectedIndex = -1;
 
   function getSearchSuggestions(query) {
     const normalizedQuery = normalizeSearchText(query);
     if (!normalizedQuery) return [];
-    return searchSuggestions
+    const directMatches = searchSuggestions
       .filter((item) => normalizeSearchText(item.label).includes(normalizedQuery))
       .sort((a, b) => {
         const aText = normalizeSearchText(a.label);
@@ -208,6 +265,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return aStarts - bStarts || a.label.length - b.label.length || a.label.localeCompare(b.label, 'zh-CN');
       })
       .slice(0, 10);
+    if (directMatches.length) return directMatches;
+
+    const fallbackMap = new Map();
+    searchIndex.forEach((item) => {
+      const sourceText = normalizeSearchText(`${item.title} ${item.description} ${item.meta}`);
+      if (sourceText.includes(normalizedQuery)) {
+        const key = `${item.tab}:${normalizeSearchText(item.title)}`;
+        fallbackMap.set(key, {
+          label: item.title,
+          filter: item.title,
+          tab: item.tab,
+          section: tabLabels[item.tab],
+        });
+      }
+    });
+    return [...fallbackMap.values()].slice(0, 10);
   }
 
   function highlightSearchTerm(value, query) {
@@ -225,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!activePanel) return;
     const normalizedQuery = normalizeSearchText(query);
     const searchableItems = activePanel.querySelectorAll(
-      '.video-card, .product-card, .resource-row, .journal-card, .faq-item'
+      '.video-card, .product-card, .resource-row, .journal-card, .faq-item, .about-searchable'
     );
     searchableItems.forEach((item) => {
       item.hidden = Boolean(normalizedQuery) && !normalizeSearchText(item.textContent).includes(normalizedQuery);
@@ -514,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (aboutContainer && typeof AUTHOR !== 'undefined') {
     const a = AUTHOR;
     aboutContainer.innerHTML = `
-      <div class="about-layout">
+      <div class="about-layout about-searchable">
         <aside class="about-profile">
           <div class="about-logo">
             <img src="assets/logo.png" alt="${a.name}" class="w-full h-full object-contain" />

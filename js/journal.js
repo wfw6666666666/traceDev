@@ -378,6 +378,7 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
     posts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     renderJournalList();
     buildTagFilters();
+    window.dispatchEvent(new CustomEvent('tracedev:journal-loaded', { detail: posts }));
   }
 
   async function savePostsToGitHub(commitMsg) {

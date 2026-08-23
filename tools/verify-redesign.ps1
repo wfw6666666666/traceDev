@@ -15,7 +15,9 @@ $requiredHtml = @(
   'quick-access',
   'activity-panel',
   'btn-primary',
-  'resource-row'
+  'resource-row',
+  'js/app.js?v=10',
+  'js/journal.js?v=14'
 )
 
 $requiredCss = @(
@@ -39,7 +41,11 @@ $requiredJs = @(
   'data-search-tab',
   'getSearchSuggestions',
   'highlightSearchTerm',
-  'searchSelectedIndex'
+  'searchSelectedIndex',
+  'addSearchIndexEntry',
+  'rebuildSearchSuggestions',
+  'tracedev:journal-loaded',
+  'AUTHOR.name'
 )
 
 $requiredSearchHtml = @(
@@ -63,6 +69,11 @@ foreach ($token in $requiredJs) {
   if ($appJs -notmatch [regex]::Escape($token)) {
     throw "Missing JS redesign token: $token"
   }
+}
+
+$journalJs = Get-Content -Raw (Join-Path $root 'js\journal.js')
+if ($journalJs -notmatch [regex]::Escape('tracedev:journal-loaded')) {
+  throw 'Missing journal search integration event.'
 }
 
 foreach ($token in $requiredSearchHtml) {

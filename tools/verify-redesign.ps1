@@ -36,7 +36,10 @@ $requiredJs = @(
   'searchIndex',
   'applyPanelSearch',
   'renderSearchResults',
-  'data-search-tab'
+  'data-search-tab',
+  'getSearchSuggestions',
+  'highlightSearchTerm',
+  'searchSelectedIndex'
 )
 
 $requiredSearchHtml = @(

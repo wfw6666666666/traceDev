@@ -1586,31 +1586,27 @@ body {
   box-shadow: 0 16px 38px rgba(31, 76, 107, .18);
 }
 .search-results[hidden] { display: none; }
-.search-result {
+.search-suggestion {
   width: 100%;
-  min-height: 58px;
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  min-height: 42px;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 7px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 5px;
   background: transparent;
   color: var(--app-text);
   text-align: left;
   cursor: pointer;
 }
-.search-result:hover,
-.search-result:focus-visible { background: var(--app-surface-soft); }
-.search-result-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 7px; background: #e7f4fd; color: var(--app-blue); }
-[data-theme='dark'] .search-result-icon { background: rgba(59,167,235,.14); }
-.search-result-copy { min-width: 0; }
-.search-result-copy strong,
-.search-result-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.search-result-copy strong { font-size: 11px; font-weight: 600; }
-.search-result-copy small { margin-top: 5px; color: var(--app-text-faint); font-size: 9px; }
-.search-result-arrow { color: var(--app-text-faint); font-size: 9px; }
+.search-suggestion:hover,
+.search-suggestion:focus-visible,
+.search-suggestion.selected { background: var(--app-surface-soft); }
+.search-suggestion > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.search-suggestion mark { padding: 0; background: transparent; color: #ff4d7d; font-weight: 600; }
+.search-suggestion small { flex: 0 0 auto; color: var(--app-text-faint); font-size: 9px; }
 .search-empty { min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; color: var(--app-text-faint); font-size: 11px; }
 .topbar-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 7px; color: var(--app-text-soft); }
 .user-chip { display: flex; align-items: center; gap: 8px; color: var(--app-text-soft); font-size: 11px; white-space: nowrap; }

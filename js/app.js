@@ -159,6 +159,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
   }
 
+  const searchSuggestionMap = new Map();
+  const technicalTermPattern = /STM32|MSPM0|ESP32|FreeRTOS|Arduino|MQTT|PCB|Gerber|WiFi|EDA|PID|APK|I2C|SPI|OLED/gi;
+
+  function addSearchSuggestion(label, item, filter = label) {
+    const cleanLabel = String(label || '').replace(/\s+/g, ' ').trim();
+    if (!cleanLabel || cleanLabel.length < 2) return;
+    const key = normalizeSearchText(cleanLabel);
+    if (!searchSuggestionMap.has(key)) {
+      searchSuggestionMap.set(key, {
+        label: cleanLabel,
+        filter: String(filter || cleanLabel).trim(),
+        tab: item.tab,
+        section: tabLabels[item.tab],
+      });
+    }
+  }
+
+  searchIndex.forEach((item) => {
+    const sourceText = `${item.title} ${item.description || ''}`;
+    addSearchSuggestion(item.title, item, item.title);
+
+    const technicalTerms = [...new Set(sourceText.match(technicalTermPattern) || [])];
+    technicalTerms.forEach((term) => {
+      const canonicalTerm = term.toUpperCase() === 'WIFI' ? 'WiFi' : term;
+      addSearchSuggestion(canonicalTerm, item, canonicalTerm);
+      addSearchSuggestion(`${canonicalTerm} ${tabLabels[item.tab]}`, item, canonicalTerm);
+      if (/入门|零基础|快速上手/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 入门教程`, item, canonicalTerm);
+      if (/实战|项目|工程/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 项目实战`, item, canonicalTerm);
+      if (/设计|原理图|布局布线/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 设计教程`, item, canonicalTerm);
+      if (/通信|互联|协议/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 通信`, item, canonicalTerm);
+    });
+  });
+
+  const searchSuggestions = [...searchSuggestionMap.values()];
+  let searchSelectedIndex = -1;
+
+  function getSearchSuggestions(query) {
+    const normalizedQuery = normalizeSearchText(query);
+    if (!normalizedQuery) return [];
+    return searchSuggestions
+      .filter((item) => normalizeSearchText(item.label).includes(normalizedQuery))
+      .sort((a, b) => {
+        const aText = normalizeSearchText(a.label);
+        const bText = normalizeSearchText(b.label);
+        const aStarts = aText.startsWith(normalizedQuery) ? 0 : 1;
+        const bStarts = bText.startsWith(normalizedQuery) ? 0 : 1;
+        return aStarts - bStarts || a.label.length - b.label.length || a.label.localeCompare(b.label, 'zh-CN');
+      })
+      .slice(0, 10);
+  }
+
+  function highlightSearchTerm(value, query) {
+    const source = String(value || '');
+    const normalizedSource = source.toLocaleLowerCase('zh-CN');
+    const normalizedQuery = normalizeSearchText(query);
+    const matchIndex = normalizedSource.indexOf(normalizedQuery);
+    if (!normalizedQuery || matchIndex < 0) return escapeSearchHtml(source);
+    const matchEnd = matchIndex + normalizedQuery.length;
+    return `${escapeSearchHtml(source.slice(0, matchIndex))}<mark>${escapeSearchHtml(source.slice(matchIndex, matchEnd))}</mark>${escapeSearchHtml(source.slice(matchEnd))}`;
+  }
+
   function applyPanelSearch(query) {
     const activePanel = Object.values(panels).find((panel) => panel?.classList.contains('active'));
     if (!activePanel) return;
@@ -180,25 +241,42 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const matches = searchIndex.filter((item) => normalizeSearchText(`${item.title} ${item.description} ${item.meta}`).includes(normalizedQuery)).slice(0, 8);
+    const matches = getSearchSuggestions(query);
+    searchSelectedIndex = -1;
     searchResults.innerHTML = matches.length
       ? matches.map((item, index) => `
-        <button class="search-result" type="button" role="option" data-search-tab="${item.tab}" data-search-index="${index}">
-          <span class="search-result-icon"><i class="fa-solid ${item.icon}" aria-hidden="true"></i></span>
-          <span class="search-result-copy"><strong>${escapeSearchHtml(item.title)}</strong><small>${escapeSearchHtml(tabLabels[item.tab])} · ${escapeSearchHtml(item.meta)}</small></span>
-          <i class="fa-solid fa-arrow-up-right-from-square search-result-arrow" aria-hidden="true"></i>
+        <button class="search-suggestion" id="search-suggestion-${index}" type="button" role="option" aria-selected="false" data-search-tab="${item.tab}" data-search-filter="${escapeSearchHtml(item.filter)}" data-search-value="${escapeSearchHtml(item.label)}" data-search-index="${index}">
+          <span>${highlightSearchTerm(item.label, query)}</span>
+          <small>${escapeSearchHtml(item.section)}</small>
         </button>`).join('')
       : '<div class="search-empty"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>没有找到匹配内容</span></div>';
     searchResults.hidden = false;
 
     searchResults.querySelectorAll('[data-search-tab]').forEach((result) => {
       result.addEventListener('click', () => {
+        siteSearch.value = result.dataset.searchValue || '';
         const targetTab = result.dataset.searchTab;
         const targetButton = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`);
         if (targetButton) targetButton.click();
+        applyPanelSearch(result.dataset.searchFilter || siteSearch.value);
         searchResults.hidden = true;
+        siteSearch.focus();
       });
     });
+  }
+
+  function setSelectedSuggestion(nextIndex) {
+    if (!searchResults || searchResults.hidden) return;
+    const options = [...searchResults.querySelectorAll('.search-suggestion')];
+    if (!options.length) return;
+    searchSelectedIndex = (nextIndex + options.length) % options.length;
+    options.forEach((option, index) => {
+      const selected = index === searchSelectedIndex;
+      option.classList.toggle('selected', selected);
+      option.setAttribute('aria-selected', String(selected));
+    });
+    siteSearch.setAttribute('aria-activedescendant', options[searchSelectedIndex].id);
+    options[searchSelectedIndex].scrollIntoView({ block: 'nearest' });
   }
 
   if (siteSearch) {
@@ -207,8 +285,23 @@ document.addEventListener('DOMContentLoaded', () => {
       renderSearchResults(siteSearch.value);
     });
     siteSearch.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && searchResults) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setSelectedSuggestion(searchSelectedIndex + 1);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setSelectedSuggestion(searchSelectedIndex - 1);
+      } else if (event.key === 'Enter' && searchResults && !searchResults.hidden) {
+        const options = searchResults.querySelectorAll('.search-suggestion');
+        const selected = options[searchSelectedIndex] || options[0];
+        if (selected) {
+          event.preventDefault();
+          selected.click();
+        }
+      } else if (event.key === 'Escape' && searchResults) {
         searchResults.hidden = true;
+        searchSelectedIndex = -1;
+        siteSearch.removeAttribute('aria-activedescendant');
         siteSearch.blur();
       }
     });

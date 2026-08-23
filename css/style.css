@@ -6,9 +6,9 @@
 /* ========== 1. CSS 变量 — 深色/浅色双主题 ========== */
 :root,
 [data-theme='dark'] {
-  --neon-blue: #2f9fe5;
-  --neon-purple: #7186e8;
-  --neon-cyan: #42bfd8;
+  --neon-blue: #4aaef0;
+  --neon-purple: #8c98ee;
+  --neon-cyan: #59c9da;
 
   --bg-body: #172530;
   --bg-card: #203442;
@@ -46,30 +46,30 @@
 }
 
 [data-theme='light'] {
-  --neon-blue: #2f9fe5;
-  --neon-purple: #7186e8;
-  --neon-cyan: #42bfd8;
+  --neon-blue: #3aa5e8;
+  --neon-purple: #7c88e6;
+  --neon-cyan: #55c5d8;
 
-  --bg-body: #eef4f8;
+  --bg-body: #eaf3f8;
   --bg-card: #ffffff;
   --bg-elevated: rgba(255, 255, 255, 0.98);
-  --bg-navbar: rgba(238, 244, 248, 0.96);
+  --bg-navbar: rgba(234, 243, 248, 0.96);
   --bg-input: #ffffff;
   --bg-social: #edf4f9;
   --bg-social-hover: #e1edf5;
   --bg-tab-hover: rgba(0, 0, 0, 0.05);
   --bg-video-overlay: rgba(0, 0, 0, 0.55);
 
-  --text-primary: #1d3449;
-  --text-secondary: #526e82;
-  --text-muted: #718b9d;
-  --text-dim: #9aafbd;
+  --text-primary: #1d4562;
+  --text-secondary: #55768e;
+  --text-muted: #7896a8;
+  --text-dim: #9eb4c2;
 
-  --border-default: #e1e9f0;
+  --border-default: #dbe7ef;
   --border-subtle: rgba(0, 0, 0, 0.06);
-  --border-input: #cbdce7;
-  --border-card: #e1e9f0;
-  --border-hover: #a8cde3;
+  --border-input: #c6dbe7;
+  --border-card: #dbe7ef;
+  --border-hover: #9fc8e3;
 
   --success: #166534;
   --success-soft: rgba(22, 101, 52, 0.10);
@@ -78,9 +78,9 @@
 
   --grid-color: rgba(0, 0, 0, 0.03);
   --float-border: rgba(0, 0, 0, 0.06);
-  --scrollbar-track: #eef4f8;
-  --scrollbar-thumb: #cbdce7;
-  --scrollbar-thumb-hover: #a8cde3;
+  --scrollbar-track: #eaf3f8;
+  --scrollbar-thumb: #c6dbe7;
+  --scrollbar-thumb-hover: #9fc8e3;
   --shadow-card: 0 1px 2px rgba(31, 26, 20, 0.06), 0 2px 6px rgba(31, 26, 20, 0.05);
   --shadow-tabs: 0 1px 3px rgba(31, 26, 20, 0.05);
 }
@@ -864,15 +864,15 @@ body::before {
    This layer deliberately overrides the earlier card-heavy skin.
    ============================================================ */
 :root {
-  --paper: #eef4f8;
+  --paper: #eaf3f8;
   --paper-raised: #ffffff;
   --paper-muted: #e4eef5;
-  --ink: #1d3449;
+  --ink: #1d4562;
   --ink-soft: #526e82;
   --ink-muted: #718b9d;
   --line: #d7e4ed;
   --line-strong: #abc7d9;
-  --brand: #2f9fe5;
+  --brand: #3aa5e8;
   --brand-hover: #1976b9;
   --green: #36b982;
   --red: #d8667a;
@@ -1411,26 +1411,26 @@ footer button:hover { color: var(--brand) !important; }
    ============================================================ */
 :root,
 [data-theme='light'] {
-  --app-blue: #2f9fe5;
-  --app-blue-deep: #1976b9;
-  --app-canvas: #eef4f8;
+  --app-blue: #3aa5e8;
+  --app-blue-deep: #1f75ab;
+  --app-canvas: #eaf3f8;
   --app-surface: #ffffff;
-  --app-surface-soft: #f5f8fb;
-  --app-border: #e1e9f0;
-  --app-text: #1d3449;
-  --app-text-soft: #687f92;
-  --app-text-faint: #94a7b6;
-  --app-green: #2fbf89;
-  --app-orange: #ef708d;
-  --app-purple: #7868e8;
-  --app-cyan: #2db8d1;
+  --app-surface-soft: #f3f7fa;
+  --app-border: #dbe7ef;
+  --app-text: #1d4562;
+  --app-text-soft: #6d8ca2;
+  --app-text-faint: #9ab0bf;
+  --app-green: #64cfa1;
+  --app-orange: #f2a65a;
+  --app-purple: #7c88e6;
+  --app-cyan: #55c5d8;
   --app-shadow: 0 14px 34px rgba(39, 86, 121, 0.09);
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
-  --app-blue: #3ba7eb;
-  --app-blue-deep: #2786c4;
+  --app-blue: #4aaef0;
+  --app-blue-deep: #2e89c1;
   --app-canvas: #17222c;
   --app-surface: #202d38;
   --app-surface-soft: #273744;
@@ -1438,10 +1438,10 @@ footer button:hover { color: var(--brand) !important; }
   --app-text: #e7f2f8;
   --app-text-soft: #a5bfce;
   --app-text-faint: #7f9aaa;
-  --app-green: #52d39d;
-  --app-orange: #f58ca4;
-  --app-purple: #a297ff;
-  --app-cyan: #62d6e7;
+  --app-green: #7bdab0;
+  --app-orange: #ffc078;
+  --app-purple: #a8b0ff;
+  --app-cyan: #78d9e6;
   --app-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
 }
 

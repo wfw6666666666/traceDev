@@ -4,11 +4,11 @@ const assert = require('assert');
 const css = fs.readFileSync('css/style.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
-assert.match(css, /--app-canvas:\s*#eef4f8/i, 'workspace canvas should use the cool reference background');
-assert.match(css, /--app-blue:\s*#2f9fe5/i, 'workspace should use the reference blue accent');
-assert.match(css, /--app-green:\s*#2fbf89/i, 'downloads should have a distinct green accent');
-assert.match(css, /--app-orange:\s*#ef708d/i, 'store should have a distinct coral accent');
-assert.match(css, /--app-purple:\s*#7868e8/i, 'journal should have a distinct purple accent');
+assert.match(css, /--app-canvas:\s*#eaf3f8/i, 'workspace canvas should use the reference blue-gray background');
+assert.match(css, /--app-blue:\s*#3aa5e8/i, 'workspace should use the reference sky-blue accent');
+assert.match(css, /--app-green:\s*#64cfa1/i, 'downloads should have a soft green accent');
+assert.match(css, /--app-orange:\s*#f2a65a/i, 'store should have a warm orange accent');
+assert.match(css, /--app-purple:\s*#7c88e6/i, 'journal should have a soft purple accent');
 assert.match(css, /\.app-shell\s*\{[\s\S]*?grid-template-columns:\s*56px 206px/i, 'workspace needs the compact two-level navigation');
 assert.match(css, /\.dashboard-grid\s*\{[\s\S]*?254px/i, 'dashboard needs a dedicated activity column');
 assert.match(css, /\.search-box\.search-open input/, 'mobile search needs an explicit open state');

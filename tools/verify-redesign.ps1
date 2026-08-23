@@ -147,6 +147,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'search behavior verification failed.' }
   & $node tools\test-dashboard.js
   if ($LASTEXITCODE -ne 0) { throw 'dashboard count behavior verification failed.' }
+  & $node tools\test-workspace-theme.js
+  if ($LASTEXITCODE -ne 0) { throw 'workspace theme verification failed.' }
 } finally {
   Pop-Location
 }

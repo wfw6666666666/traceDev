@@ -1411,20 +1411,20 @@ footer button:hover { color: var(--brand) !important; }
    ============================================================ */
 :root,
 [data-theme='light'] {
-  --app-blue: #319ee5;
-  --app-blue-deep: #1d78bd;
-  --app-canvas: #e7eef4;
+  --app-blue: #2f9fe5;
+  --app-blue-deep: #1976b9;
+  --app-canvas: #eef4f8;
   --app-surface: #ffffff;
-  --app-surface-soft: #f6f8fb;
-  --app-border: #e4e9ef;
-  --app-text: #173b59;
+  --app-surface-soft: #f5f8fb;
+  --app-border: #e1e9f0;
+  --app-text: #1d3449;
   --app-text-soft: #687f92;
-  --app-text-faint: #9aabb8;
+  --app-text-faint: #94a7b6;
   --app-green: #44c98a;
   --app-orange: #f4a04b;
   --app-purple: #8c84ef;
   --app-cyan: #55c7df;
-  --app-shadow: 0 14px 34px rgba(39, 86, 121, 0.10);
+  --app-shadow: 0 14px 34px rgba(39, 86, 121, 0.09);
 }
 
 [data-theme='dark'] {
@@ -1461,8 +1461,8 @@ body {
   grid-template-columns: 56px 206px minmax(0, 1fr);
   margin: 0 auto;
   overflow: hidden;
-  border: 1px solid rgba(203, 219, 230, .82);
-  border-radius: 14px;
+  border: 1px solid rgba(203, 219, 230, .9);
+  border-radius: 16px;
   background: var(--app-surface);
   box-shadow: 0 20px 50px rgba(45, 79, 108, .11);
 }
@@ -1559,7 +1559,7 @@ body {
 .workspace { min-width: 0; min-height: 100%; padding: 0; background: var(--app-surface); }
 main#main-content { padding-top: 0 !important; }
 .workspace-topbar {
-  min-height: 72px;
+  min-height: 70px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1682,7 +1682,7 @@ main#main-content { padding-top: 0 !important; }
 .toolbar-count { color: var(--app-text-faint); font: 10px 'JetBrains Mono', monospace; white-space: nowrap; }
 
 .dashboard-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
-.summary-card { min-width: 0; min-height: 86px; display: grid; grid-template-columns: 42px minmax(0, 1fr) 16px; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-surface); color: var(--app-text); text-align: left; cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.summary-card { min-width: 0; min-height: 86px; display: grid; grid-template-columns: 42px minmax(0, 1fr) 16px; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--app-border); border-radius: 9px; background: var(--app-surface); color: var(--app-text); text-align: left; cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
 .summary-card:hover { border-color: #badff5; box-shadow: 0 8px 20px rgba(45, 107, 147, .08); transform: translateY(-1px); }
 .summary-card:focus-visible { border-color: var(--app-blue); outline: 2px solid color-mix(in srgb, var(--app-blue) 34%, transparent); outline-offset: 2px; }
 .summary-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 8px; background: #e9f5fd; color: var(--app-blue); }
@@ -1698,7 +1698,7 @@ main#main-content { padding-top: 0 !important; }
 .quick-access-title { display: flex; flex-direction: column; justify-content: center; padding: 0 8px; }
 .quick-access-title span { color: var(--app-text); font-size: 12px; font-weight: 700; }
 .quick-access-title small { margin-top: 4px; color: var(--app-text-faint); font-size: 10px; }
-.quick-item { min-height: 58px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid transparent; border-radius: 7px; background: var(--app-surface-soft); color: var(--app-text-soft); font-size: 11px; cursor: pointer; text-align: left; box-shadow: none; }
+.quick-item { min-height: 58px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-surface-soft); color: var(--app-text-soft); font-size: 11px; cursor: pointer; text-align: left; box-shadow: none; }
 .quick-item:hover, .quick-item.active { border-color: #c8e5f8; color: var(--app-text); }
 .quick-item.active { box-shadow: inset 0 0 0 1px rgba(49,158,229,.12); }
 .quick-icon { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border-radius: 7px; }

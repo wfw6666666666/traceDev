@@ -14,15 +14,20 @@ $requiredHtml = @(
   'workspace-topbar',
   'site-search',
   'quick-access',
+  'dashboard-summary',
+  'css/style.css?v=13',
+  'data-i18n-aria-label="dashboard.overview"',
+  'metric-video-count',
   'activity-panel',
   'btn-primary',
   'resource-row',
-  'js/app.js?v=13',
+  'js/dashboard.js?v=1',
+  'js/app.js?v=14',
   'js/journal.js?v=17',
   'language-switcher',
   'language-menu',
   'data-i18n',
-  'js/i18n.js?v=3'
+  'js/i18n.js?v=4'
 )
 
 $requiredCss = @(
@@ -32,8 +37,13 @@ $requiredCss = @(
   '.section-sidebar',
   '.workspace-topbar',
   '.quick-access',
+  '.dashboard-summary',
+  '.summary-card:focus-visible',
   '.activity-panel',
-  '@media (max-width: 767px)',
+  "[data-theme='dark'] .section-sidebar",
+  "[data-theme='dark'] .activity-panel",
+  'color-scheme: dark',
+  '@media (max-width: 980px)',
   '.language-switcher',
   '.language-menu'
 )
@@ -69,6 +79,10 @@ foreach ($token in $requiredCss) {
   if ($css -notmatch [regex]::Escape($token)) {
     throw "Missing CSS redesign token: $token"
   }
+}
+
+if ($css -notmatch '@media \(max-width: 980px\)\s*\{\s*body \{ padding: 0; \}') {
+  throw 'Tablet breakpoint must collapse the workspace navigation at 980px.'
 }
 
 $appJs = Get-Content -Raw (Join-Path $root 'js\app.js')
@@ -119,6 +133,8 @@ Push-Location $root
 try {
   & $node --check js\app.js
   if ($LASTEXITCODE -ne 0) { throw 'app.js syntax verification failed.' }
+  & $node --check js\dashboard.js
+  if ($LASTEXITCODE -ne 0) { throw 'dashboard.js syntax verification failed.' }
   & $node --check js\i18n.js
   if ($LASTEXITCODE -ne 0) { throw 'i18n.js syntax verification failed.' }
   & $node --check js\journal.js
@@ -129,6 +145,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'i18n behavior verification failed.' }
   & $node tools\test-search-source.js
   if ($LASTEXITCODE -ne 0) { throw 'search behavior verification failed.' }
+  & $node tools\test-dashboard.js
+  if ($LASTEXITCODE -ne 0) { throw 'dashboard count behavior verification failed.' }
 } finally {
   Pop-Location
 }

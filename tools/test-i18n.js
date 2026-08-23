@@ -54,6 +54,7 @@ assert.match(context.document.cookie, /django_language=en/);
 assert.equal(documentElement.lang, 'en');
 assert.equal(currentLanguage.textContent, 'English');
 assert.equal(context.window.I18nController.translate('nav.videos'), 'Tutorials');
+assert.equal(context.window.I18nController.translate('dashboard.overview'), 'Resource overview');
 assert.equal(dispatched.at(-1).type, 'tracedev:locale-changed');
 
 const item = { title: '中文标题', translations: { en: { title: 'English title' } } };

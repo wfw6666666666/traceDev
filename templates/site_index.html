@@ -20,7 +20,7 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 自定义样式 -->
-  <link rel="stylesheet" href="css/style.css?v=11" />
+  <link rel="stylesheet" href="css/style.css?v=13" />
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <!-- Google Fonts -->
@@ -156,6 +156,24 @@
               <p data-i18n="dashboard.videosDescription">嵌入式开发、单片机、STM32 等技术教程，从入门到进阶</p>
             </div>
             <button class="text-action tab-btn" data-tab="downloads"><span data-i18n="dashboard.viewResources">查看全部资料</span> <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+
+          <div class="dashboard-summary" aria-label="资源概览" data-i18n-aria-label="dashboard.overview">
+            <button class="summary-card summary-card-blue tab-btn" data-tab="videos">
+              <span class="summary-icon"><i class="fa-solid fa-play" aria-hidden="true"></i></span>
+              <span class="summary-copy"><small data-i18n="nav.videos">教学视频</small><strong id="metric-video-count">3</strong><em data-i18n="dashboard.published">已发布</em></span>
+              <i class="fa-solid fa-arrow-right summary-arrow" aria-hidden="true"></i>
+            </button>
+            <button class="summary-card summary-card-green tab-btn" data-tab="downloads">
+              <span class="summary-icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span>
+              <span class="summary-copy"><small data-i18n="nav.downloads">资料下载</small><strong id="metric-resource-count">5</strong><em data-i18n="dashboard.published">已发布</em></span>
+              <i class="fa-solid fa-arrow-right summary-arrow" aria-hidden="true"></i>
+            </button>
+            <button class="summary-card summary-card-orange tab-btn" data-tab="store">
+              <span class="summary-icon"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i></span>
+              <span class="summary-copy"><small data-i18n="nav.store">咸鱼店铺</small><strong id="metric-product-count">1</strong><em data-i18n="dashboard.published">已发布</em></span>
+              <i class="fa-solid fa-arrow-right summary-arrow" aria-hidden="true"></i>
+            </button>
           </div>
 
           <div class="quick-access" aria-label="快速入口" data-i18n-aria-label="dashboard.quickAccess">
@@ -492,8 +510,9 @@ https://example.com/ref2"></textarea>
 
   <!-- ==================== JavaScript ==================== -->
   <script src="js/data.js?v=12"></script>
-  <script src="js/i18n.js?v=3"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/dashboard.js?v=1"></script>
+  <script src="js/app.js?v=14"></script>
   <script src="js/journal.js?v=17"></script>
   <!-- 不蒜子访问统计 -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>

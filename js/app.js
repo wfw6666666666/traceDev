@@ -77,15 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateDashboardCounts() {
-    const counts = {
-      'video-count': typeof VIDEOS !== 'undefined' ? VIDEOS.filter((item) => item.published).length : 0,
-      'resource-count': typeof RESOURCES !== 'undefined' ? RESOURCES.filter((item) => item.published).length : 0,
-      'product-count': typeof PRODUCTS !== 'undefined' ? PRODUCTS.filter((item) => item.published !== false).length : 0,
-    };
-
-    Object.entries(counts).forEach(([id, count]) => {
-      const target = document.getElementById(id);
-      if (target) target.textContent = String(count).padStart(2, '0');
+    if (!window.TraceDevDashboard) return;
+    window.TraceDevDashboard.updateContentCounts({
+      videos: typeof VIDEOS !== 'undefined' ? VIDEOS : [],
+      resources: typeof RESOURCES !== 'undefined' ? RESOURCES : [],
+      products: typeof PRODUCTS !== 'undefined' ? PRODUCTS : [],
     });
   }
 
@@ -628,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderFaqs();
     renderAuthor();
     rebuildSearchIndex();
+    updateDashboardCounts();
     const dashboardCount = document.getElementById('dashboard-video-count');
     if (dashboardCount && typeof VIDEOS !== 'undefined') dashboardCount.textContent = String(VIDEOS.filter((item) => item.published).length);
     if (siteSearch) {

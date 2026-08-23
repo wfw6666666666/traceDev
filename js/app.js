@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================
   const siteSearch = document.getElementById('site-search');
   const searchResults = document.getElementById('search-results');
+  const searchBox = document.querySelector('.search-box');
   const tabLabelKeys = {
     videos: 'nav.videos', downloads: 'nav.downloads', store: 'nav.store',
     journal: 'nav.journal', faq: 'nav.faq', about: 'nav.about',
@@ -347,6 +348,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (siteSearch) {
+    searchBox?.addEventListener('click', (event) => {
+      if (window.matchMedia('(max-width: 980px)').matches && event.target !== siteSearch) {
+        event.preventDefault();
+        searchBox.classList.add('search-open');
+        siteSearch.focus();
+      }
+    });
     siteSearch.addEventListener('input', () => {
       applyPanelSearch(siteSearch.value);
       renderSearchResults(siteSearch.value);
@@ -373,7 +381,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     document.addEventListener('click', (event) => {
-      if (searchResults && !event.target.closest('.search-wrap')) searchResults.hidden = true;
+      if (!event.target.closest('.search-wrap')) {
+        if (searchResults) searchResults.hidden = true;
+        searchBox?.classList.remove('search-open');
+      }
     });
   }
 

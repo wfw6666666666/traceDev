@@ -108,11 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (menuBtn) menuBtn.innerHTML = '<i class="fa-solid fa-bars"></i>';
       }
 
-      const siteSearch = document.getElementById('site-search');
-      if (siteSearch) {
-        siteSearch.value = '';
-        siteSearch.dispatchEvent(new Event('input'));
-      }
+      const activeSearch = document.getElementById('site-search');
+      if (activeSearch) applyPanelSearch(activeSearch.value);
 
       // 触发技能条动画
       if (tab === 'about') {
@@ -122,23 +119,101 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  //  2.1 当前面板搜索
+  //  2.1 全站搜索 + 当前面板筛选
   // ==========================================================
   const siteSearch = document.getElementById('site-search');
+  const searchResults = document.getElementById('search-results');
+  const tabLabels = {
+    videos: '教学视频',
+    downloads: '资料下载',
+    store: '咸鱼店铺',
+    journal: '学习日志',
+    faq: '疑难解答',
+    about: '关于作者',
+  };
+
+  const normalizeSearchText = (value) => String(value || '').toLocaleLowerCase('zh-CN').trim();
+  const escapeSearchHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[char]));
+
+  const searchIndex = [];
+  if (typeof VIDEOS !== 'undefined') {
+    VIDEOS.filter((item) => item.published).forEach((item) => searchIndex.push({
+      title: item.title, description: item.description, meta: item.date, tab: 'videos', icon: 'fa-film',
+    }));
+  }
+  if (typeof RESOURCES !== 'undefined') {
+    RESOURCES.filter((item) => item.published).forEach((item) => searchIndex.push({
+      title: item.name, description: item.description, meta: item.category || '资源', tab: 'downloads', icon: 'fa-folder-open',
+    }));
+  }
+  if (typeof PRODUCTS !== 'undefined') {
+    PRODUCTS.filter((item) => item.published !== false).forEach((item) => searchIndex.push({
+      title: item.name, description: item.description, meta: item.price || '商品', tab: 'store', icon: 'fa-bag-shopping',
+    }));
+  }
+  if (typeof FAQS !== 'undefined') {
+    FAQS.forEach((item) => searchIndex.push({
+      title: item.question, description: item.answer, meta: 'FAQ', tab: 'faq', icon: 'fa-circle-question',
+    }));
+  }
+
+  function applyPanelSearch(query) {
+    const activePanel = Object.values(panels).find((panel) => panel?.classList.contains('active'));
+    if (!activePanel) return;
+    const normalizedQuery = normalizeSearchText(query);
+    const searchableItems = activePanel.querySelectorAll(
+      '.video-card, .product-card, .resource-row, .journal-card, .faq-item'
+    );
+    searchableItems.forEach((item) => {
+      item.hidden = Boolean(normalizedQuery) && !normalizeSearchText(item.textContent).includes(normalizedQuery);
+    });
+  }
+
+  function renderSearchResults(query) {
+    if (!searchResults) return;
+    const normalizedQuery = normalizeSearchText(query);
+    if (!normalizedQuery) {
+      searchResults.hidden = true;
+      searchResults.innerHTML = '';
+      return;
+    }
+
+    const matches = searchIndex.filter((item) => normalizeSearchText(`${item.title} ${item.description} ${item.meta}`).includes(normalizedQuery)).slice(0, 8);
+    searchResults.innerHTML = matches.length
+      ? matches.map((item, index) => `
+        <button class="search-result" type="button" role="option" data-search-tab="${item.tab}" data-search-index="${index}">
+          <span class="search-result-icon"><i class="fa-solid ${item.icon}" aria-hidden="true"></i></span>
+          <span class="search-result-copy"><strong>${escapeSearchHtml(item.title)}</strong><small>${escapeSearchHtml(tabLabels[item.tab])} · ${escapeSearchHtml(item.meta)}</small></span>
+          <i class="fa-solid fa-arrow-up-right-from-square search-result-arrow" aria-hidden="true"></i>
+        </button>`).join('')
+      : '<div class="search-empty"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>没有找到匹配内容</span></div>';
+    searchResults.hidden = false;
+
+    searchResults.querySelectorAll('[data-search-tab]').forEach((result) => {
+      result.addEventListener('click', () => {
+        const targetTab = result.dataset.searchTab;
+        const targetButton = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`);
+        if (targetButton) targetButton.click();
+        searchResults.hidden = true;
+      });
+    });
+  }
+
   if (siteSearch) {
     siteSearch.addEventListener('input', () => {
-      const query = siteSearch.value.trim().toLocaleLowerCase('zh-CN');
-      const activePanel = Object.values(panels).find((panel) => panel?.classList.contains('active'));
-      if (!activePanel) return;
-
-      const searchableItems = activePanel.querySelectorAll(
-        '.video-card, .product-card, .resource-row, .journal-card, .faq-item'
-      );
-
-      searchableItems.forEach((item) => {
-        const matches = !query || item.textContent.toLocaleLowerCase('zh-CN').includes(query);
-        item.hidden = !matches;
-      });
+      applyPanelSearch(siteSearch.value);
+      renderSearchResults(siteSearch.value);
+    });
+    siteSearch.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && searchResults) {
+        searchResults.hidden = true;
+        siteSearch.blur();
+      }
+    });
+    document.addEventListener('click', (event) => {
+      if (searchResults && !event.target.closest('.search-wrap')) searchResults.hidden = true;
     });
   }
 

@@ -32,7 +32,15 @@ $requiredCss = @(
 $requiredJs = @(
   'site-search',
   'syncActiveTabs',
-  'updateDashboardCounts'
+  'updateDashboardCounts',
+  'searchIndex',
+  'applyPanelSearch',
+  'renderSearchResults',
+  'data-search-tab'
+)
+
+$requiredSearchHtml = @(
+  'search-results'
 )
 
 foreach ($token in $requiredHtml) {
@@ -51,6 +59,12 @@ $appJs = Get-Content -Raw (Join-Path $root 'js\app.js')
 foreach ($token in $requiredJs) {
   if ($appJs -notmatch [regex]::Escape($token)) {
     throw "Missing JS redesign token: $token"
+  }
+}
+
+foreach ($token in $requiredSearchHtml) {
+  if ($html -notmatch [regex]::Escape($token)) {
+    throw "Missing search HTML token: $token"
   }
 }
 

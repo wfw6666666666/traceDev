@@ -20,7 +20,7 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 自定义样式 -->
-  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=8" />
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <!-- Google Fonts -->
@@ -109,7 +109,10 @@
           <div><span class="breadcrumb-muted">My workspace</span><strong>技术资源库</strong></div>
         </div>
         <div class="topbar-tools">
-          <label class="search-box" for="site-search"><i class="fa-solid fa-magnifying-glass"></i><input id="site-search" type="search" placeholder="搜索资源、教程或关键词" autocomplete="off" /></label>
+          <div class="search-wrap">
+            <label class="search-box" for="site-search"><i class="fa-solid fa-magnifying-glass"></i><input id="site-search" type="search" placeholder="搜索资源、教程或关键词" autocomplete="off" /></label>
+            <div id="search-results" class="search-results" role="listbox" aria-label="搜索结果" hidden></div>
+          </div>
           <span class="topbar-icon" aria-hidden="true"><i class="fa-regular fa-bell"></i></span>
           <div class="user-chip"><span class="user-avatar">T</span><span class="hidden sm:inline">Hi, TraceDev</span></div>
         </div>
@@ -482,9 +485,9 @@ https://example.com/ref2"></textarea>
   <button id="back-to-top" aria-label="回到顶部"><i class="fa-solid fa-arrow-up"></i></button>
 
   <!-- ==================== JavaScript ==================== -->
-  <script src="js/data.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
-  <script src="js/journal.js?v=11"></script>
+  <script src="js/data.js?v=8"></script>
+  <script src="js/app.js?v=8"></script>
+  <script src="js/journal.js?v=12"></script>
   <!-- 不蒜子访问统计 -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 

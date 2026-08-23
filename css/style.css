@@ -1473,9 +1473,9 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 16px 7px;
-  background: var(--app-surface);
-  color: var(--app-text-soft);
-  border-right: 1px solid var(--app-border);
+  background: var(--app-blue);
+  color: #fff;
+  border-right: 0;
 }
 .rail-logo {
   width: 40px;
@@ -1484,7 +1484,7 @@ body {
   place-items: center;
   margin-bottom: 24px;
   border-radius: 9px;
-  background: #edf7fe;
+  background: rgba(255, 255, 255, .94);
 }
 .rail-logo img { width: 36px; height: 36px; object-fit: contain; }
 .rail-actions { display: grid; gap: 10px; width: 100%; justify-items: center; }
@@ -1497,14 +1497,14 @@ body {
   place-items: center;
   border: 0;
   border-radius: 9px;
-  color: var(--app-text-faint);
+  color: #fff;
   background: transparent;
   cursor: pointer;
   transition: background .18s ease, color .18s ease;
 }
 .rail-tab:hover,
 .rail-tab.active,
-.rail-icon-btn:hover { color: var(--app-blue-deep); background: #eaf5fd; }
+.rail-icon-btn:hover { color: #fff; background: rgba(255, 255, 255, .18); }
 .rail-tab.active { box-shadow: none; }
 
 .section-sidebar {

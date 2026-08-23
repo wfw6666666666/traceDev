@@ -6,6 +6,8 @@ const html = fs.readFileSync('index.html', 'utf8');
 
 assert.match(css, /--app-canvas:\s*#eaf3f8/i, 'workspace canvas should use the reference blue-gray background');
 assert.match(css, /--app-blue:\s*#3aa5e8/i, 'workspace should use the reference sky-blue accent');
+assert.match(css, /\.tool-rail\s*\{[^}]*background:\s*var\(--app-blue\)/i, 'left tool rail should use the primary blue');
+assert.match(css, /\.rail-tab,\s*\.rail-icon-btn\s*\{[^}]*color:\s*#fff/i, 'left tool rail icons should be white');
 assert.match(css, /--app-green:\s*#64cfa1/i, 'downloads should have a soft green accent');
 assert.match(css, /--app-orange:\s*#f2a65a/i, 'store should have a warm orange accent');
 assert.match(css, /--app-purple:\s*#7c88e6/i, 'journal should have a soft purple accent');

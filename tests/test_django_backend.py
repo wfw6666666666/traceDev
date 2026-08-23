@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
 from django.test import SimpleTestCase
+from pathlib import Path
 
 from resources.models import FAQ, JournalPost, Product, Resource, Video
 
@@ -49,3 +50,18 @@ class BackendConfigurationTests(SimpleTestCase):
         for model in (Video, Product, Resource, FAQ):
             with self.subTest(model=model.__name__):
                 self.assertEqual(model._meta.ordering, ["sort_order", "-pk"])
+
+    def test_project_has_python_hosting_configuration(self):
+        base_dir = Path(settings.BASE_DIR)
+        requirements = (base_dir / "requirements.txt").read_text(encoding="utf-8")
+        render_blueprint = (base_dir / "render.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("whitenoise.middleware.WhiteNoiseMiddleware", settings.MIDDLEWARE)
+        self.assertIn("django.middleware.clickjacking.XFrameOptionsMiddleware", settings.MIDDLEWARE)
+        self.assertIn("gunicorn", requirements)
+        self.assertIn("whitenoise", requirements)
+        self.assertIn("dj-database-url", requirements)
+        self.assertTrue((base_dir / "Procfile").exists())
+        self.assertTrue((base_dir / "render.yaml").exists())
+        self.assertIn("runtime: python", render_blueprint)
+        self.assertIn("startCommand: gunicorn tracedev_backend.wsgi:application", render_blueprint)

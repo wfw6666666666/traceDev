@@ -17,12 +17,12 @@ $requiredHtml = @(
   'activity-panel',
   'btn-primary',
   'resource-row',
-  'js/app.js?v=12',
-  'js/journal.js?v=16',
+  'js/app.js?v=13',
+  'js/journal.js?v=17',
   'language-switcher',
   'language-menu',
   'data-i18n',
-  'js/i18n.js?v=2'
+  'js/i18n.js?v=3'
 )
 
 $requiredCss = @(

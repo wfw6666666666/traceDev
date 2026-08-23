@@ -32,6 +32,11 @@ class BackendConfigurationTests(SimpleTestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 404)
 
+    def test_public_javascript_is_served_with_a_javascript_mime_type(self):
+        response = self.client.get("/js/app.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("javascript", response.headers["Content-Type"])
+
     def test_five_locale_configuration_is_present(self):
         self.assertEqual(
             {code for code, _label in settings.LANGUAGES},

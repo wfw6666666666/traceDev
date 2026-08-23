@@ -1,3 +1,5 @@
+import mimetypes
+
 from django.conf import settings
 from django.core.exceptions import SuspiciousFileOperation
 from django.contrib import admin
@@ -7,6 +9,11 @@ from django.urls import include, path, re_path
 from django.views.static import serve
 
 from resources.views import index
+
+
+# Windows file associations can make django.views.static serve .js as text/plain.
+# Explicitly register the web MIME type so browsers honor our nosniff header.
+mimetypes.add_type("application/javascript", ".js", strict=True)
 
 
 urlpatterns = [

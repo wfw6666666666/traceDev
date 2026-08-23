@@ -24,8 +24,12 @@
   let posts = [];
   let editingPostId = null;
   let aiKey = null;  // Anthropic API key
+  let currentJournalFilter = 'all';
+  let currentDetailPostId = null;
 
   const $ = (sel) => document.querySelector(sel);
+  const t = (key, fallback) => window.I18nController?.translate(key, fallback) || fallback || key;
+  const getLocalizedContent = (item, field) => window.I18nController?.getLocalizedContent(item, field) ?? item?.[field] ?? '';
   const b64e = (s) => btoa(unescape(encodeURIComponent(s)));
   const b64d = (s) => decodeURIComponent(escape(atob(s)));
 
@@ -535,16 +539,21 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
     const tagSet = new Set();
     posts.forEach(p => (p.tags || []).forEach(t => tagSet.add(t)));
 
-    let html = '<button class="journal-tag-btn active" data-tag="all">全部</button>';
-    cats.forEach(cat => html += `<button class="journal-tag-btn" data-tag="cat:${escapeHtml(cat)}">${escapeHtml(cat)}</button>`);
+    let html = `<button class="journal-tag-btn${currentJournalFilter === 'all' ? ' active' : ''}" data-tag="all">${escapeHtml(t('action.all', '全部'))}</button>`;
+    cats.forEach(cat => {
+      const post = posts.find(item => item.category === cat);
+      const label = getLocalizedContent(post, 'category') || cat;
+      html += `<button class="journal-tag-btn${currentJournalFilter === `cat:${cat}` ? ' active' : ''}" data-tag="cat:${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
+    });
     if (cats.size > 0 && tagSet.size > 0) html += '<span class="text-[var(--text-dim)] mx-1">|</span>';
-    tagSet.forEach(tag => html += `<button class="journal-tag-btn" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`);
+    tagSet.forEach(tag => html += `<button class="journal-tag-btn${currentJournalFilter === tag ? ' active' : ''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`);
     container.innerHTML = html;
     container.querySelectorAll('.journal-tag-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         container.querySelectorAll('.journal-tag-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        renderJournalList(btn.dataset.tag);
+        currentJournalFilter = btn.dataset.tag;
+        renderJournalList(currentJournalFilter);
       });
     });
   }
@@ -552,6 +561,7 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
   function renderJournalList(filter = 'all') {
     const container = $('#journal-list');
     if (!container) return;
+    currentJournalFilter = filter;
     let filtered = [...posts];
     if (filter !== 'all') {
       if (filter.startsWith('cat:')) {
@@ -563,29 +573,33 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
     if (filtered.length === 0) {
       container.innerHTML = `<div class="empty-state">
         <div class="empty-icon"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></div>
-        <p class="empty-title">${filter === 'all' ? '暂无学习日志' : '该分类下暂无文章'}</p>
-        <p class="empty-desc">${isAdmin ? '点击上方「新建日志」开始记录' : '学习日志即将上线，敬请期待'}</p>
+        <p class="empty-title">${filter === 'all' ? t('state.noJournal', '暂无学习日志') : t('state.noCategory', '该分类下暂无文章')}</p>
+        <p class="empty-desc">${isAdmin ? t('action.newJournal', '新建日志') : t('state.noJournalHint', '学习日志即将上线，敬请期待')}</p>
       </div>`;
       return;
     }
     container.innerHTML = filtered.map(p => {
-      const excerpt = stripMarkdown(p.content || '').slice(0, 200);
-      const tagHtml = (p.tags || []).map(t => `<span class="journal-badge">${escapeHtml(t)}</span>`).join('');
+      const localizedTitle = getLocalizedContent(p, 'title');
+      const localizedContent = getLocalizedContent(p, 'content');
+      const localizedCategory = getLocalizedContent(p, 'category');
+      const localizedTags = getLocalizedContent(p, 'tags') || p.tags || [];
+      const excerpt = stripMarkdown(localizedContent).slice(0, 200);
+      const tagHtml = localizedTags.map(tag => `<span class="journal-badge">${escapeHtml(tag)}</span>`).join('');
       const imageHtml = (p.images || []).slice(0, 3).map(img => {
         const src = img.startsWith('http') || img.startsWith('data:') ? img : img.startsWith('/') ? img : '/' + img;
         return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
       }).join('');
       const adminBtns = isAdmin ? `
         <div class="journal-admin-actions" onclick="event.stopPropagation()">
-          <button class="edit-post-btn btn-quiet" data-post-id="${p.id}" title="编辑">编辑</button>
+          <button class="edit-post-btn btn-quiet" data-post-id="${p.id}" title="${escapeHtml(t('action.edit', '编辑'))}">${escapeHtml(t('action.edit', '编辑'))}</button>
         </div>` : '';
       return `<article class="journal-card" data-post-id="${p.id}">
-        <div class="journal-card-header"><h3 class="journal-card-title">${escapeHtml(p.title)}</h3>${adminBtns}</div>
+        <div class="journal-card-header"><h3 class="journal-card-title">${escapeHtml(localizedTitle)}</h3>${adminBtns}</div>
         <div class="journal-card-meta">
           <span>${escapeHtml(p.createdAt)}</span>
-          ${p.category ? `<span>${escapeHtml(p.category)}</span>` : ''}
-          ${(p.files || []).length > 0 ? `<span>${p.files.length} 个附件</span>` : ''}
-          ${(p.images || []).length > 0 ? `<span>${p.images.length} 张图片</span>` : ''}
+          ${localizedCategory ? `<span>${escapeHtml(localizedCategory)}</span>` : ''}
+          ${(p.files || []).length > 0 ? `<span>${p.files.length} ${escapeHtml(t('status.attachments', '个附件'))}</span>` : ''}
+          ${(p.images || []).length > 0 ? `<span>${p.images.length} ${escapeHtml(t('status.images', '张图片'))}</span>` : ''}
         </div>
         <div class="journal-card-excerpt">${escapeHtml(excerpt)}</div>
         ${tagHtml ? `<div class="journal-tags">${tagHtml}</div>` : ''}
@@ -611,13 +625,18 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
     const content = $('#post-detail-content');
     if (!modal || !content) return;
 
-    const tagHtml = (post.tags || []).map(t => `<span class="journal-badge">${escapeHtml(t)}</span>`).join('');
+    currentDetailPostId = postId;
+    const localizedTitle = getLocalizedContent(post, 'title');
+    const localizedContent = getLocalizedContent(post, 'content');
+    const localizedCategory = getLocalizedContent(post, 'category');
+    const localizedTags = getLocalizedContent(post, 'tags') || post.tags || [];
+    const tagHtml = localizedTags.map(tag => `<span class="journal-badge">${escapeHtml(tag)}</span>`).join('');
     const imageHtml = (post.images || []).length > 0 ? `<div class="post-detail-images">${post.images.map(img => {
       const src = img.startsWith('http') || img.startsWith('data:') ? img : img.startsWith('/') ? img : '/' + img;
       return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
     }).join('')}</div>` : '';
     const fileHtml = (post.files || []).length > 0 ? `<div class="post-detail-files">
-      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">📎 附件下载</p>
+      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">📎 ${escapeHtml(t('status.attachmentsTitle', '附件下载'))}</p>
       ${post.files.map(f => {
         const fUrl = (f.url || f.path || '');
         return `<a href="${escapeHtml(fUrl.startsWith('http') || fUrl.startsWith('/') ? fUrl : '/' + fUrl)}" class="post-file-link" target="_blank" rel="noopener">
@@ -625,21 +644,21 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
       }).join('')}
     </div>` : '';
     const linkHtml = (post.links || []).length > 0 ? `<div class="post-detail-links">
-      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">🔗 参考链接</p>
+      <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1 font-medium">🔗 ${escapeHtml(t('status.reference', '参考链接'))}</p>
       ${post.links.map(l => `<a href="${escapeHtml(l)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l)}</a>`).join('')}
     </div>` : '';
 
     content.innerHTML = `<div class="post-detail-header">
-      <h2>${escapeHtml(post.title)}</h2>
+      <h2>${escapeHtml(localizedTitle)}</h2>
       <div class="post-detail-meta">
         <span>${escapeHtml(post.createdAt)}</span>
-        ${post.category ? `<span>${escapeHtml(post.category)}</span>` : ''}
-        <span>更新于 ${escapeHtml(post.updatedAt)}</span>
+        ${localizedCategory ? `<span>${escapeHtml(localizedCategory)}</span>` : ''}
+        <span>${escapeHtml(t('status.updated', '更新于'))} ${escapeHtml(post.updatedAt)}</span>
       </div>${tagHtml ? `<div class="journal-tags mt-3">${tagHtml}</div>` : ''}
     </div>${imageHtml}${fileHtml}
-    <div class="post-detail-body">${simpleMarkdown(post.content || '')}</div>${linkHtml}
+    <div class="post-detail-body">${simpleMarkdown(localizedContent)}</div>${linkHtml}
     ${isAdmin ? `<div class="mt-8 pt-4 border-t border-[var(--border-default)] flex gap-3">
-      <button class="edit-post-from-detail btn-secondary" data-post-id="${post.id}">编辑</button>
+      <button class="edit-post-from-detail btn-secondary" data-post-id="${post.id}">${escapeHtml(t('action.edit', '编辑'))}</button>
     </div>` : ''}`;
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -653,6 +672,7 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
   function closePostDetail() {
     $('#post-detail-modal').classList.add('hidden');
     document.body.style.overflow = '';
+    currentDetailPostId = null;
   }
 
   // ── Markdown ───────────────────────────────────────
@@ -904,6 +924,13 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
       }
     });
   }
+
+  window.addEventListener('tracedev:locale-changed', () => {
+    renderJournalList(currentJournalFilter);
+    buildTagFilters();
+    if (currentDetailPostId) showPostDetail(currentDetailPostId);
+    window.dispatchEvent(new CustomEvent('tracedev:journal-loaded', { detail: posts }));
+  });
 
   // ── 初始化 ────────────────────────────────────────
   async function init() {

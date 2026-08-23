@@ -4,3 +4,10 @@ data/.secret
 token.txt
 *.pyc
 __pycache__/
+
+# Django local runtime
+.venv/
+db.sqlite3
+staticfiles/
+.env
+.pytest_cache/

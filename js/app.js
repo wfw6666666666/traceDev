@@ -9,6 +9,10 @@
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
+  const i18n = window.I18nController || {};
+  const t = (key, fallback) => i18n.translate ? i18n.translate(key, fallback) : (fallback || key);
+  const localize = (item, field) => i18n.getLocalizedContent ? i18n.getLocalizedContent(item, field) : (item?.[field] || '');
+
   // ==========================================================
   //  0. 主题切换
   // ==========================================================
@@ -123,14 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================
   const siteSearch = document.getElementById('site-search');
   const searchResults = document.getElementById('search-results');
-  const tabLabels = {
-    videos: '教学视频',
-    downloads: '资料下载',
-    store: '咸鱼店铺',
-    journal: '学习日志',
-    faq: '疑难解答',
-    about: '关于作者',
+  const tabLabelKeys = {
+    videos: 'nav.videos', downloads: 'nav.downloads', store: 'nav.store',
+    journal: 'nav.journal', faq: 'nav.faq', about: 'nav.about',
   };
+  const tabLabel = (tab) => t(tabLabelKeys[tab], tab);
 
   const normalizeSearchText = (value) => String(value || '').toLocaleLowerCase('zh-CN').trim();
   const escapeSearchHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
@@ -152,43 +153,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (typeof VIDEOS !== 'undefined') {
-    VIDEOS.filter((item) => item.published).forEach((item) => addSearchIndexEntry({
-      title: item.title, description: item.description, meta: item.date, tab: 'videos', icon: 'fa-film',
+  let journalSearchPosts = [];
+
+  function rebuildSearchIndex() {
+    searchIndex.length = 0;
+    if (typeof VIDEOS !== 'undefined') {
+      VIDEOS.filter((item) => item.published).forEach((item) => addSearchIndexEntry({
+        title: localize(item, 'title'), description: localize(item, 'description'), meta: item.date, tab: 'videos', icon: 'fa-film',
+      }));
+    }
+    if (typeof RESOURCES !== 'undefined') {
+      RESOURCES.filter((item) => item.published).forEach((item) => addSearchIndexEntry({
+        title: localize(item, 'name'), description: localize(item, 'description'), meta: localize(item, 'category') || item.category || '资源', tab: 'downloads', icon: 'fa-folder-open',
+      }));
+    }
+    if (typeof PRODUCTS !== 'undefined') {
+      PRODUCTS.filter((item) => item.published !== false).forEach((item) => addSearchIndexEntry({
+        title: localize(item, 'name'), description: localize(item, 'description'), meta: item.price || '商品', tab: 'store', icon: 'fa-bag-shopping',
+      }));
+    }
+    if (typeof FAQS !== 'undefined') {
+      FAQS.forEach((item) => addSearchIndexEntry({
+        title: localize(item, 'question'), description: localize(item, 'answer'), meta: 'FAQ', tab: 'faq', icon: 'fa-circle-question',
+      }));
+    }
+    if (typeof AUTHOR !== 'undefined') {
+      addSearchIndexEntry({
+        title: AUTHOR.name,
+        description: `${localize(AUTHOR, 'tagline')} ${localize(AUTHOR, 'bio')} ${(AUTHOR.skills || []).map((skill) => localize(skill, 'name')).join(' ')}`,
+        meta: tabLabel('about'), tab: 'about', icon: 'fa-user', source: 'author',
+      });
+      (AUTHOR.skills || []).forEach((skill) => addSearchIndexEntry({
+        title: localize(skill, 'name'),
+        description: `${AUTHOR.name} ${localize(AUTHOR, 'tagline')} ${localize(AUTHOR, 'bio')}`,
+        meta: tabLabel('about'), tab: 'about', icon: 'fa-user-gear', source: 'author',
+      }));
+    }
+    journalSearchPosts.forEach((post) => addSearchIndexEntry({
+      title: localize(post, 'title'), description: localize(post, 'content'),
+      meta: [localize(post, 'category'), ...(localize(post, 'tags') || [])].filter(Boolean).join(' '),
+      tab: 'journal', icon: 'fa-book-open', source: 'journal',
     }));
-  }
-  if (typeof RESOURCES !== 'undefined') {
-    RESOURCES.filter((item) => item.published).forEach((item) => addSearchIndexEntry({
-      title: item.name, description: item.description, meta: item.category || '资源', tab: 'downloads', icon: 'fa-folder-open',
-    }));
-  }
-  if (typeof PRODUCTS !== 'undefined') {
-    PRODUCTS.filter((item) => item.published !== false).forEach((item) => addSearchIndexEntry({
-      title: item.name, description: item.description, meta: item.price || '商品', tab: 'store', icon: 'fa-bag-shopping',
-    }));
-  }
-  if (typeof FAQS !== 'undefined') {
-    FAQS.forEach((item) => addSearchIndexEntry({
-      title: item.question, description: item.answer, meta: 'FAQ', tab: 'faq', icon: 'fa-circle-question',
-    }));
-  }
-  if (typeof AUTHOR !== 'undefined') {
-    addSearchIndexEntry({
-      title: AUTHOR.name,
-      description: `${AUTHOR.tagline} ${AUTHOR.bio} ${(AUTHOR.skills || []).map((skill) => skill.name).join(' ')}`,
-      meta: '作者与技能',
-      tab: 'about',
-      icon: 'fa-user',
-      source: 'author',
-    });
-    (AUTHOR.skills || []).forEach((skill) => addSearchIndexEntry({
-      title: skill.name,
-      description: `${AUTHOR.name} ${AUTHOR.tagline} ${AUTHOR.bio}`,
-      meta: '作者技能',
-      tab: 'about',
-      icon: 'fa-user-gear',
-      source: 'author',
-    }));
+    rebuildSearchSuggestions();
   }
 
   const searchSuggestionMap = new Map();
@@ -203,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         label: cleanLabel,
         filter: String(filter || cleanLabel).trim(),
         tab: item.tab,
-        section: tabLabels[item.tab],
+        section: tabLabel(item.tab),
       });
     }
   }
@@ -218,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
       technicalTerms.forEach((term) => {
         const canonicalTerm = term.toUpperCase() === 'WIFI' ? 'WiFi' : term;
         addSearchSuggestion(canonicalTerm, item, canonicalTerm);
-        addSearchSuggestion(`${canonicalTerm} ${tabLabels[item.tab]}`, item, canonicalTerm);
+        addSearchSuggestion(`${canonicalTerm} ${tabLabel(item.tab)}`, item, canonicalTerm);
         if (/入门|零基础|快速上手/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 入门教程`, item, canonicalTerm);
         if (/实战|项目|工程/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 项目实战`, item, canonicalTerm);
         if (/设计|原理图|布局布线/.test(sourceText)) addSearchSuggestion(`${canonicalTerm} 设计教程`, item, canonicalTerm);
@@ -228,21 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
     searchSuggestions = [...searchSuggestionMap.values()];
   }
 
-  rebuildSearchSuggestions();
+  rebuildSearchIndex();
 
   window.addEventListener('tracedev:journal-loaded', (event) => {
-    for (let i = searchIndex.length - 1; i >= 0; i -= 1) {
-      if (searchIndex[i].source === 'journal') searchIndex.splice(i, 1);
-    }
-    (Array.isArray(event.detail) ? event.detail : []).forEach((post) => addSearchIndexEntry({
-      title: post.title,
-      description: post.content,
-      meta: [post.category, ...(post.tags || [])].filter(Boolean).join(' '),
-      tab: 'journal',
-      icon: 'fa-book-open',
-      source: 'journal',
-    }));
-    rebuildSearchSuggestions();
+    journalSearchPosts = Array.isArray(event.detail) ? event.detail : [];
+    rebuildSearchIndex();
     const activeSearch = document.getElementById('site-search');
     if (activeSearch) {
       applyPanelSearch(activeSearch.value);
@@ -276,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
           label: item.title,
           filter: item.title,
           tab: item.tab,
-          section: tabLabels[item.tab],
+          section: tabLabel(item.tab),
         });
       }
     });
@@ -322,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span>${highlightSearchTerm(item.label, query)}</span>
           <small>${escapeSearchHtml(item.section)}</small>
         </button>`).join('')
-      : '<div class="search-empty"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>没有找到匹配内容</span></div>';
+      : `<div class="search-empty"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>${escapeSearchHtml(t('search.empty', '没有找到匹配内容'))}</span></div>`;
     searchResults.hidden = false;
 
     searchResults.querySelectorAll('[data-search-tab]').forEach((result) => {
@@ -388,19 +384,20 @@ document.addEventListener('DOMContentLoaded', () => {
   //  2. 渲染视频卡片
   // ==========================================================
   const videoGrid = document.getElementById('video-grid');
-  if (videoGrid && typeof VIDEOS !== 'undefined') {
+  function renderVideos() {
+    if (!videoGrid || typeof VIDEOS === 'undefined') return;
+    videoGrid.innerHTML = '';
     const publishedVideos = VIDEOS.filter((v) => v.published);
-
     if (publishedVideos.length === 0) {
       videoGrid.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
-          <p class="empty-title">教程筹备中</p>
-          <p class="empty-desc">正在录制第一批嵌入式教学视频，涵盖 STM32、PCB、电源设计等方向，敬请期待</p>
+          <p class="empty-title">${t('state.preparingVideos', '教程筹备中')}</p>
+          <p class="empty-desc">${t('state.preparingVideosHint', '正在录制第一批嵌入式教学视频')}</p>
         </div>
       `;
     } else {
-      publishedVideos.forEach((v, i) => {
+      publishedVideos.forEach((v) => {
         const card = document.createElement('article');
         card.className = 'video-card';
         card.innerHTML = `
@@ -410,8 +407,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="video-duration">${v.duration}</span>
           </div>
           <div class="video-info">
-            <h3>${v.title}</h3>
-            <p class="line-clamp-2 mb-3">${v.description || ''}</p>
+            <h3>${localize(v, 'title')}</h3>
+            <p class="line-clamp-2 mb-3">${localize(v, 'description')}</p>
             <p>${v.date}</p>
           </div>
         `;
@@ -424,33 +421,35 @@ document.addEventListener('DOMContentLoaded', () => {
   //  3. 渲染商品卡片
   // ==========================================================
   const productGrid = document.getElementById('product-grid');
-  if (productGrid && typeof PRODUCTS !== 'undefined') {
+  function renderProducts() {
+    if (!productGrid || typeof PRODUCTS === 'undefined') return;
+    productGrid.innerHTML = '';
     const publishedProducts = PRODUCTS.filter((p) => p.published !== false);
-
     if (publishedProducts.length === 0) {
       productGrid.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon"><i class="fa-solid fa-store" aria-hidden="true"></i></div>
-          <p class="empty-title">商品上架中</p>
-          <p class="empty-desc">更多开发板、模块和工具即将上架咸鱼，敬请关注</p>
+          <p class="empty-title">${t('state.preparingProducts', '商品上架中')}</p>
+          <p class="empty-desc">${t('state.preparingProductsHint', '更多开发板、模块和工具即将上架')}</p>
         </div>
       `;
     } else {
       publishedProducts.forEach((p) => {
+        const name = localize(p, 'name');
         const card = document.createElement('article');
         card.className = 'product-card';
         card.innerHTML = `
           <div class="product-image">
-            ${p.image ? `<img src="${p.image}" alt="${p.name}" />` : '<i class="fa-solid fa-box-open" aria-hidden="true"></i>'}
+            ${p.image ? `<img src="${p.image}" alt="${name}" />` : '<i class="fa-solid fa-box-open" aria-hidden="true"></i>'}
           </div>
           <div class="product-body flex flex-col">
             <span class="section-number mb-3">Hardware / In stock</span>
-            <h3>${p.name}</h3>
-            <p class="mb-5 line-clamp-3">${p.description}</p>
+            <h3>${name}</h3>
+            <p class="mb-5 line-clamp-3">${localize(p, 'description')}</p>
             <div class="flex items-center justify-between gap-3 mt-auto pt-4 border-t border-[var(--border-subtle)]">
               <span class="product-price">${p.price}</span>
               <a href="${p.link}" target="_blank" rel="noopener noreferrer" class="btn-primary">
-                去闲鱼查看 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                ${t('action.openExternal', '打开外部链接')} <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
               </a>
             </div>
           </div>
@@ -491,12 +490,12 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = `
         <span class="card-icon ${isApk ? 'text-[var(--success)]' : ''}"><i class="fa-solid ${icon}" aria-hidden="true"></i></span>
         <div class="resource-copy">
-          <h3>${res.name}</h3>
-          <p class="line-clamp-2">${res.description}</p>
+          <h3>${localize(res, 'name')}</h3>
+          <p class="line-clamp-2">${localize(res, 'description')}</p>
         </div>
-        <span class="resource-meta">${res.category || '其他'}<br>${res.updatedAt}</span>
+        <span class="resource-meta">${localize(res, 'category') || res.category || '其他'}<br>${res.updatedAt}</span>
         <button class="download-btn" data-resource-id="${res.id}">
-          ${isApk ? '下载 APK' : '获取下载'} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          ${isApk ? t('action.downloadApk', '下载 APK') : t('action.getDownload', '获取下载')} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
         </button>
       `;
       resourceGrid.appendChild(card);
@@ -507,8 +506,8 @@ document.addEventListener('DOMContentLoaded', () => {
       resourceGrid.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon"><i class="fa-solid fa-box-open" aria-hidden="true"></i></div>
-          <p class="empty-title">暂无该类资源</p>
-          <p class="empty-desc">该分类下还没有资源，请查看其他分类或稍后再来</p>
+          <p class="empty-title">${t('state.noCategory', '暂无该类资源')}</p>
+          <p class="empty-desc">${t('state.noCategoryHint', '该分类下还没有资源')}</p>
         </div>
       `;
     }
@@ -516,11 +515,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 构建分类筛选 chips
   const categoryFilter = document.getElementById('category-filter');
-  if (categoryFilter && typeof RESOURCES !== 'undefined') {
+  function buildCategoryFilters() {
+    if (!categoryFilter || typeof RESOURCES === 'undefined') return;
+    categoryFilter.innerHTML = '';
     const published = RESOURCES.filter((r) => r.published);
     const cats = ['all', ...new Set(published.map((r) => r.category).filter(Boolean))];
     const catLabels = {
-      all: '全部',
+      all: t('action.all', '全部'),
       stm32: 'STM32',
       arduino: 'Arduino',
       pcb: 'PCB',
@@ -531,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const count = cat === 'all' ? pool.length : pool.filter((r) => r.category === cat).length;
       const chip = document.createElement('button');
       chip.type = 'button';
-      chip.className = 'journal-tag-btn cat-chip' + (cat === 'all' ? ' active' : '');
+      chip.className = 'journal-tag-btn cat-chip' + (cat === currentCategory ? ' active' : '');
       chip.dataset.cat = cat;
       chip.innerHTML = `${catLabels[cat] || cat}<span class="cat-count">${count}</span>`;
       chip.addEventListener('click', () => {
@@ -542,24 +543,25 @@ document.addEventListener('DOMContentLoaded', () => {
       categoryFilter.appendChild(chip);
     });
 
-    // 初始渲染
-    renderResources('all');
+    renderResources(cats.includes(currentCategory) ? currentCategory : 'all');
   }
 
   // ==========================================================
   //  5. 渲染 FAQ
   // ==========================================================
   const faqContainer = document.getElementById('faq-container');
-  if (faqContainer && typeof FAQS !== 'undefined') {
-    FAQS.forEach((faq, i) => {
+  function renderFaqs() {
+    if (!faqContainer || typeof FAQS === 'undefined') return;
+    faqContainer.innerHTML = '';
+    FAQS.forEach((faq) => {
       const item = document.createElement('div');
       item.className = 'faq-item';
       item.innerHTML = `
         <button class="faq-question" data-faq-id="${faq.id}" aria-expanded="false">
-          <span>${faq.question}</span>
-          <span class="sr-only">展开答案</span>
+          <span>${localize(faq, 'question')}</span>
+          <span class="sr-only">${t('action.expandAnswer', '展开答案')}</span>
         </button>
-        <div class="faq-answer">${faq.answer}</div>
+        <div class="faq-answer">${localize(faq, 'answer')}</div>
       `;
       faqContainer.appendChild(item);
 
@@ -584,7 +586,8 @@ document.addEventListener('DOMContentLoaded', () => {
   //  6. 渲染关于作者
   // ==========================================================
   const aboutContainer = document.getElementById('about-container');
-  if (aboutContainer && typeof AUTHOR !== 'undefined') {
+  function renderAuthor() {
+    if (!aboutContainer || typeof AUTHOR === 'undefined') return;
     const a = AUTHOR;
     aboutContainer.innerHTML = `
       <div class="about-layout about-searchable">
@@ -592,29 +595,47 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="about-logo">
             <img src="assets/logo.png" alt="${a.name}" class="w-full h-full object-contain" />
           </div>
-          <span class="section-number">Maintainer</span>
+          <span class="section-number">${t('status.maintainer', 'Maintainer')}</span>
           <h2>${a.name}</h2>
-          <p class="mt-2 text-sm">${a.tagline}</p>
+          <p class="mt-2 text-sm">${localize(a, 'tagline')}</p>
         </aside>
         <div class="about-main">
-          <p class="text-sm leading-relaxed max-w-2xl">${a.bio}</p>
+          <p class="text-sm leading-relaxed max-w-2xl">${localize(a, 'bio')}</p>
           <div class="about-links mt-6">
             ${a.links.map((l) => `
               <a href="${l.url}" target="_blank" rel="noopener noreferrer">
-                ${l.label} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                ${localize(l, 'label')} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
               </a>
             `).join('')}
           </div>
           <div class="about-skills mt-9">
-            <p class="section-number mb-3">Technical focus</p>
+            <p class="section-number mb-3">${t('status.technicalFocus', 'Technical focus')}</p>
             <ul>
-              ${a.skills.map((s) => `<li><span>${s.name}</span><small>${s.level >= 80 ? '常用' : s.level >= 60 ? '熟悉' : '正在学习'}</small></li>`).join('')}
+              ${a.skills.map((s) => `<li><span>${localize(s, 'name')}</span><small>${s.level >= 80 ? t('status.common', '常用') : s.level >= 60 ? t('status.familiar', '熟悉') : t('status.learning', '正在学习')}</small></li>`).join('')}
             </ul>
           </div>
         </div>
       </div>
     `;
   }
+
+  function renderAllLocalizedContent() {
+    renderVideos();
+    renderProducts();
+    buildCategoryFilters();
+    renderFaqs();
+    renderAuthor();
+    rebuildSearchIndex();
+    const dashboardCount = document.getElementById('dashboard-video-count');
+    if (dashboardCount && typeof VIDEOS !== 'undefined') dashboardCount.textContent = String(VIDEOS.filter((item) => item.published).length);
+    if (siteSearch) {
+      applyPanelSearch(siteSearch.value);
+      renderSearchResults(siteSearch.value);
+    }
+  }
+
+  renderAllLocalizedContent();
+  window.addEventListener('tracedev:locale-changed', renderAllLocalizedContent);
 
   // ==========================================================
   //  7. 技能条动画
@@ -693,10 +714,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    modalTitle.textContent = res.name;
+    modalTitle.textContent = localize(res, 'name');
     modalLink.value = res.link;
-    modalCode.value = `提取码: ${res.extractCode}`;
-    modalPassword.value = res.password ? `解压密码: ${res.password}` : '（无需解压密码）';
+    modalCode.value = `${t('modal.extractCode', '提取码')}: ${res.extractCode}`;
+    modalPassword.value = res.password ? `${t('modal.unzipPassword', '解压密码')}: ${res.password}` : t('modal.noPassword', '（无需解压密码）');
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     const mc = modal.querySelector('.relative');

@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $html = Get-Content -Raw (Join-Path $root 'index.html')
 $css = Get-Content -Raw (Join-Path $root 'css\style.css')
+$i18nPath = Join-Path $root 'js\i18n.js'
 $bundledNode = 'C:\Users\wfw\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
 $node = if (Get-Command node -ErrorAction SilentlyContinue) { 'node' } elseif (Test-Path $bundledNode) { $bundledNode } else { throw 'Node.js runtime not found' }
 
@@ -16,8 +17,12 @@ $requiredHtml = @(
   'activity-panel',
   'btn-primary',
   'resource-row',
-  'js/app.js?v=10',
-  'js/journal.js?v=14'
+  'js/app.js?v=11',
+  'js/journal.js?v=15',
+  'language-switcher',
+  'language-menu',
+  'data-i18n',
+  'js/i18n.js?v=1'
 )
 
 $requiredCss = @(
@@ -28,7 +33,9 @@ $requiredCss = @(
   '.workspace-topbar',
   '.quick-access',
   '.activity-panel',
-  '@media (max-width: 767px)'
+  '@media (max-width: 767px)',
+  '.language-switcher',
+  '.language-menu'
 )
 
 $requiredJs = @(
@@ -76,6 +83,27 @@ if ($journalJs -notmatch [regex]::Escape('tracedev:journal-loaded')) {
   throw 'Missing journal search integration event.'
 }
 
+if (-not (Test-Path $i18nPath)) {
+  throw 'Missing js/i18n.js.'
+}
+
+$i18nJs = Get-Content -Raw $i18nPath
+foreach ($token in @('zh-CN', 'zh-TW', 'en:', 'ja:', 'ko:', 'traceDevLocale', 'translate', 'getLocalizedContent', 'tracedev:locale-changed')) {
+  if ($i18nJs -notmatch [regex]::Escape($token)) {
+    throw "Missing i18n token: $token"
+  }
+}
+
+foreach ($token in @('getLocalizedContent', 'tracedev:locale-changed', 'renderAllLocalizedContent')) {
+  if ($appJs -notmatch [regex]::Escape($token)) {
+    throw "Missing localized app integration: $token"
+  }
+}
+
+if ($journalJs -notmatch [regex]::Escape('getLocalizedContent')) {
+  throw 'Missing localized journal integration.'
+}
+
 foreach ($token in $requiredSearchHtml) {
   if ($html -notmatch [regex]::Escape($token)) {
     throw "Missing search HTML token: $token"
@@ -85,8 +113,15 @@ foreach ($token in $requiredSearchHtml) {
 Push-Location $root
 try {
   & $node --check js\app.js
+  if ($LASTEXITCODE -ne 0) { throw 'app.js syntax verification failed.' }
+  & $node --check js\i18n.js
+  if ($LASTEXITCODE -ne 0) { throw 'i18n.js syntax verification failed.' }
   & $node --check js\journal.js
+  if ($LASTEXITCODE -ne 0) { throw 'journal.js syntax verification failed.' }
   & $node --check js\data.js
+  if ($LASTEXITCODE -ne 0) { throw 'data.js syntax verification failed.' }
+  & $node tools\test-i18n.js
+  if ($LASTEXITCODE -ne 0) { throw 'i18n behavior verification failed.' }
 } finally {
   Pop-Location
 }

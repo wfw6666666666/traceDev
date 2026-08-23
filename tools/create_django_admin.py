@@ -21,6 +21,7 @@ if not password:
 User = get_user_model()
 user, created = User.objects.get_or_create(username=username, defaults={"email": ""})
 user.email = ""
+user.is_active = True
 user.is_staff = True
 user.is_superuser = True
 user.set_password(password)

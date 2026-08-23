@@ -22,6 +22,7 @@ class Video(PublishableModel):
     class Meta:
         verbose_name = "教学视频"
         verbose_name_plural = "教学视频"
+        ordering = ["sort_order", "-pk"]
 
     def __str__(self):
         return self.title
@@ -38,6 +39,7 @@ class Product(PublishableModel):
     class Meta:
         verbose_name = "商品"
         verbose_name_plural = "商品"
+        ordering = ["sort_order", "-pk"]
 
     def __str__(self):
         return self.name
@@ -58,6 +60,7 @@ class Resource(PublishableModel):
     class Meta:
         verbose_name = "资料资源"
         verbose_name_plural = "资料资源"
+        ordering = ["sort_order", "-pk"]
 
     def __str__(self):
         return self.name
@@ -70,6 +73,7 @@ class FAQ(PublishableModel):
     class Meta:
         verbose_name = "常见问题"
         verbose_name_plural = "常见问题"
+        ordering = ["sort_order", "-pk"]
 
     def __str__(self):
         return self.question

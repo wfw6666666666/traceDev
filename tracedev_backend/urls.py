@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import SuspiciousFileOperation
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.http import Http404
@@ -18,10 +19,23 @@ urlpatterns += [
 ]
 
 
-def site_static(request, path):
-    if path.startswith(("admin/", "simpleui/")):
+PUBLIC_DIRS = {
+    "css": settings.BASE_DIR / "css",
+    "js": settings.BASE_DIR / "js",
+    "assets": settings.BASE_DIR / "assets",
+    "downloads": settings.BASE_DIR / "downloads",
+    "uploads": settings.BASE_DIR / "uploads",
+}
+
+
+def public_static(request, directory, path):
+    document_root = PUBLIC_DIRS.get(directory)
+    if document_root is None:
         raise Http404
-    return serve(request, path, document_root=settings.BASE_DIR)
+    try:
+        return serve(request, path, document_root=document_root)
+    except SuspiciousFileOperation as exc:
+        raise Http404 from exc
 
 
 def public_data(request, path):
@@ -31,7 +45,7 @@ def public_data(request, path):
 
 
 urlpatterns += [
-    re_path(r"^(?P<path>(?:css|js|assets|downloads|uploads)/.*)$", site_static),
+    re_path(r"^(?P<directory>css|js|assets|downloads|uploads)/(?P<path>.*)$", public_static),
     re_path(r"^data/(?P<path>.*)$", public_data),
 ]
 urlpatterns += staticfiles_urlpatterns()

@@ -307,6 +307,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!normalizedQuery) {
       searchResults.hidden = true;
       searchResults.innerHTML = '';
+      searchSelectedIndex = -1;
+      siteSearch?.removeAttribute('aria-activedescendant');
       return;
     }
 

@@ -83,4 +83,21 @@ localizedItems.forEach(([entry, fields]) => {
   });
 });
 
+const flattenKeys = (value, prefix = '') => Object.entries(value).flatMap(([key, child]) => {
+  const path = prefix ? `${prefix}.${key}` : key;
+  return child && typeof child === 'object' ? flattenKeys(child, path) : [path];
+});
+const baseKeys = flattenKeys(context.window.I18N['zh-CN']).sort();
+['zh-TW', 'en', 'ja', 'ko'].forEach((locale) => {
+  assert.deepEqual(flattenKeys(context.window.I18N[locale]).sort(), baseKeys, `${locale} static translation keys differ from zh-CN`);
+});
+
+const djangoLocales = { 'zh-CN': 'zh-hans', 'zh-TW': 'zh-hant', en: 'en', ja: 'ja', ko: 'ko' };
+Object.entries(djangoLocales).forEach(([locale, djangoLocale]) => {
+  context.window.I18nController.setLocale(locale);
+  assert.equal(storage.get('traceDevLocale'), locale);
+  assert.equal(documentElement.lang, locale);
+  assert.match(context.document.cookie, new RegExp(`django_language=${djangoLocale}`));
+});
+
 console.log('i18n behavior verification passed.');

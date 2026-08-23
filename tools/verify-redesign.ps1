@@ -17,12 +17,12 @@ $requiredHtml = @(
   'activity-panel',
   'btn-primary',
   'resource-row',
-  'js/app.js?v=11',
-  'js/journal.js?v=15',
+  'js/app.js?v=12',
+  'js/journal.js?v=16',
   'language-switcher',
   'language-menu',
   'data-i18n',
-  'js/i18n.js?v=1'
+  'js/i18n.js?v=2'
 )
 
 $requiredCss = @(
@@ -110,6 +110,11 @@ foreach ($token in $requiredSearchHtml) {
   }
 }
 
+$djangoTemplate = Get-Content -Raw (Join-Path $root 'templates\site_index.html')
+if ($html -ne $djangoTemplate) {
+  throw 'index.html and templates/site_index.html are not synchronized.'
+}
+
 Push-Location $root
 try {
   & $node --check js\app.js
@@ -122,6 +127,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'data.js syntax verification failed.' }
   & $node tools\test-i18n.js
   if ($LASTEXITCODE -ne 0) { throw 'i18n behavior verification failed.' }
+  & $node tools\test-search-source.js
+  if ($LASTEXITCODE -ne 0) { throw 'search behavior verification failed.' }
 } finally {
   Pop-Location
 }

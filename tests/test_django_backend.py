@@ -20,6 +20,17 @@ class BackendConfigurationTests(SimpleTestCase):
         self.assertEqual(self.client.get("/data/admin.json").status_code, 404)
         self.assertEqual(self.client.get("/data/.secret").status_code, 404)
 
+    def test_public_asset_routes_block_path_traversal(self):
+        blocked_paths = (
+            "/css/%2e%2e/manage.py",
+            "/assets/%2e%2e/manage.py",
+            "/js/../manage.py",
+            "/uploads/%2e%2e/db.sqlite3",
+        )
+        for path in blocked_paths:
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 404)
+
     def test_five_locale_configuration_is_present(self):
         self.assertEqual(
             {code for code, _label in settings.LANGUAGES},
@@ -33,3 +44,8 @@ class BackendConfigurationTests(SimpleTestCase):
         self.assertIn(Resource, admin.site._registry)
         self.assertIn(FAQ, admin.site._registry)
         self.assertIn(JournalPost, admin.site._registry)
+
+    def test_publishable_content_models_keep_explicit_sort_ordering(self):
+        for model in (Video, Product, Resource, FAQ):
+            with self.subTest(model=model.__name__):
+                self.assertEqual(model._meta.ordering, ["sort_order", "-pk"])

@@ -17,6 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function getTheme() {
     return htmlEl.getAttribute('data-theme') || 'dark';
   }
+  // 动态更新页脚年份
+  const footerYear = document.getElementById('footer-year');
+  if (footerYear) footerYear.textContent = String(new Date().getFullYear());
+
   function setTheme(theme) {
     htmlEl.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
@@ -62,13 +66,33 @@ document.addEventListener('DOMContentLoaded', () => {
     about: document.getElementById('panel-about'),
   };
 
+  function syncActiveTabs(tab) {
+    tabBtns.forEach((button) => {
+      button.classList.toggle('active', button.dataset.tab === tab);
+    });
+  }
+
+  function updateDashboardCounts() {
+    const counts = {
+      'video-count': typeof VIDEOS !== 'undefined' ? VIDEOS.filter((item) => item.published).length : 0,
+      'resource-count': typeof RESOURCES !== 'undefined' ? RESOURCES.filter((item) => item.published).length : 0,
+      'product-count': typeof PRODUCTS !== 'undefined' ? PRODUCTS.filter((item) => item.published !== false).length : 0,
+    };
+
+    Object.entries(counts).forEach(([id, count]) => {
+      const target = document.getElementById(id);
+      if (target) target.textContent = String(count).padStart(2, '0');
+    });
+  }
+
+  updateDashboardCounts();
+
   tabBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
 
-      // 切换按钮状态
-      tabBtns.forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
+      // 同步所有导航入口的选中状态
+      syncActiveTabs(tab);
 
       // 切换面板
       Object.entries(panels).forEach(([key, panel]) => {
@@ -84,12 +108,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (menuBtn) menuBtn.innerHTML = '<i class="fa-solid fa-bars"></i>';
       }
 
+      const siteSearch = document.getElementById('site-search');
+      if (siteSearch) {
+        siteSearch.value = '';
+        siteSearch.dispatchEvent(new Event('input'));
+      }
+
       // 触发技能条动画
       if (tab === 'about') {
         animateSkillBars();
       }
     });
   });
+
+  // ==========================================================
+  //  2.1 当前面板搜索
+  // ==========================================================
+  const siteSearch = document.getElementById('site-search');
+  if (siteSearch) {
+    siteSearch.addEventListener('input', () => {
+      const query = siteSearch.value.trim().toLocaleLowerCase('zh-CN');
+      const activePanel = Object.values(panels).find((panel) => panel?.classList.contains('active'));
+      if (!activePanel) return;
+
+      const searchableItems = activePanel.querySelectorAll(
+        '.video-card, .product-card, .resource-row, .journal-card, .faq-item'
+      );
+
+      searchableItems.forEach((item) => {
+        const matches = !query || item.textContent.toLocaleLowerCase('zh-CN').includes(query);
+        item.hidden = !matches;
+      });
+    });
+  }
+
 
   // ==========================================================
   //  2. 渲染视频卡片
@@ -108,16 +160,18 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     } else {
       publishedVideos.forEach((v, i) => {
-        const card = document.createElement('div');
+        const card = document.createElement('article');
         card.className = 'video-card';
         card.innerHTML = `
           <div class="video-thumb">
+            ${v.thumbnail ? `<img src="${v.thumbnail}" alt="" class="video-thumb-img" loading="lazy" />` : ''}
             <div class="play-icon"><i class="fa-solid fa-play" aria-hidden="true"></i></div>
             <span class="video-duration">${v.duration}</span>
           </div>
           <div class="video-info">
-            <h3 class="text-sm font-semibold text-[var(--text-primary)] leading-snug mb-1 line-clamp-2">${v.title}</h3>
-            <p class="text-xs text-[var(--text-muted)]">${v.date}</p>
+            <h3>${v.title}</h3>
+            <p class="line-clamp-2 mb-3">${v.description || ''}</p>
+            <p>${v.date}</p>
           </div>
         `;
         videoGrid.appendChild(card);
@@ -142,19 +196,20 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     } else {
       publishedProducts.forEach((p) => {
-        const card = document.createElement('div');
+        const card = document.createElement('article');
         card.className = 'product-card';
         card.innerHTML = `
           <div class="product-image">
-            ${p.image ? `<img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover" />` : '<i class="fa-solid fa-box-open" aria-hidden="true"></i>'}
+            ${p.image ? `<img src="${p.image}" alt="${p.name}" />` : '<i class="fa-solid fa-box-open" aria-hidden="true"></i>'}
           </div>
-          <div class="product-body">
-            <h3 class="text-sm font-semibold text-[var(--text-primary)] mb-1">${p.name}</h3>
-            <p class="text-xs text-[var(--text-muted)] mb-3 line-clamp-2">${p.description}</p>
-            <div class="flex items-center justify-between">
+          <div class="product-body flex flex-col">
+            <span class="section-number mb-3">Hardware / In stock</span>
+            <h3>${p.name}</h3>
+            <p class="mb-5 line-clamp-3">${p.description}</p>
+            <div class="flex items-center justify-between gap-3 mt-auto pt-4 border-t border-[var(--border-subtle)]">
               <span class="product-price">${p.price}</span>
-              <a href="${p.link}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-xs font-medium hover:bg-neon-blue/20 transition-all duration-300">
-                <i class="fa-solid fa-cart-shopping mr-1" aria-hidden="true"></i>查看详情
+              <a href="${p.link}" target="_blank" rel="noopener noreferrer" class="btn-primary">
+                去闲鱼查看 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
               </a>
             </div>
           </div>
@@ -190,22 +245,18 @@ document.addEventListener('DOMContentLoaded', () => {
     filtered.forEach((res, i) => {
       const isApk = res.type === 'apk';
       const icon = isApk ? 'fa-android' : iconMap[i % iconMap.length];
-      const card = document.createElement('div');
-      card.className = 'card-glow p-5 flex flex-col justify-between';
+      const card = document.createElement('article');
+      card.className = 'card-glow resource-row';
       card.innerHTML = `
-        <div>
-          <div class="flex items-start gap-3 mb-3">
-            <span class="card-icon ${isApk ? 'text-green-400 border-green-400/30 bg-green-400/10' : ''}"><i class="fa-solid ${icon}" aria-hidden="true"></i></span>
-            <h3 class="text-base font-semibold text-[var(--text-primary)] leading-snug pt-0.5">${res.name}</h3>
-          </div>
-          <p class="text-xs text-[var(--text-muted)] leading-relaxed mb-4 line-clamp-2">${res.description}</p>
+        <span class="card-icon ${isApk ? 'text-[var(--success)]' : ''}"><i class="fa-solid ${icon}" aria-hidden="true"></i></span>
+        <div class="resource-copy">
+          <h3>${res.name}</h3>
+          <p class="line-clamp-2">${res.description}</p>
         </div>
-        <div class="flex items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)]">
-          <span class="text-xs text-[var(--text-dim)]"><i class="fa-regular fa-clock mr-1" aria-hidden="true"></i>${res.updatedAt}</span>
-          <button class="download-btn px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 active:scale-95 ${isApk ? 'bg-green-400/10 border border-green-400/30 text-green-400 hover:bg-green-400/20' : 'bg-neon-blue/10 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue/20'}" data-resource-id="${res.id}">
-            <i class="fa-solid fa-download mr-1" aria-hidden="true"></i>${isApk ? '直接下载' : '获取下载'}
-          </button>
-        </div>
+        <span class="resource-meta">${res.category || '其他'}<br>${res.updatedAt}</span>
+        <button class="download-btn" data-resource-id="${res.id}">
+          ${isApk ? '下载 APK' : '获取下载'} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+        </button>
       `;
       resourceGrid.appendChild(card);
     });
@@ -222,9 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 构建分类下拉框
-  const categorySelect = document.getElementById('category-select');
-  if (categorySelect && typeof RESOURCES !== 'undefined') {
+  // 构建分类筛选 chips
+  const categoryFilter = document.getElementById('category-filter');
+  if (categoryFilter && typeof RESOURCES !== 'undefined') {
     const published = RESOURCES.filter((r) => r.published);
     const cats = ['all', ...new Set(published.map((r) => r.category).filter(Boolean))];
     const catLabels = {
@@ -234,25 +285,20 @@ document.addEventListener('DOMContentLoaded', () => {
       pcb: 'PCB',
       '手机app': '手机APP',
     };
-    const catIcons = {
-      all: 'fa-th-large',
-      stm32: 'fa-microchip',
-      arduino: 'fa-code',
-      pcb: 'fa-bolt',
-      '手机app': 'fa-mobile-screen',
-    };
-
     cats.forEach((cat) => {
       const pool = RESOURCES.filter((r) => r.published);
       const count = cat === 'all' ? pool.length : pool.filter((r) => r.category === cat).length;
-      const option = document.createElement('option');
-      option.value = cat;
-      option.textContent = `${catLabels[cat] || cat} (${count})`;
-      categorySelect.appendChild(option);
-    });
-
-    categorySelect.addEventListener('change', () => {
-      renderResources(categorySelect.value);
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'journal-tag-btn cat-chip' + (cat === 'all' ? ' active' : '');
+      chip.dataset.cat = cat;
+      chip.innerHTML = `${catLabels[cat] || cat}<span class="cat-count">${count}</span>`;
+      chip.addEventListener('click', () => {
+        categoryFilter.querySelectorAll('.cat-chip').forEach((b) => b.classList.remove('active'));
+        chip.classList.add('active');
+        renderResources(cat);
+      });
+      categoryFilter.appendChild(chip);
     });
 
     // 初始渲染
@@ -270,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
       item.innerHTML = `
         <button class="faq-question" data-faq-id="${faq.id}" aria-expanded="false">
           <span>${faq.question}</span>
-          <i class="fa-solid fa-chevron-down text-xs" aria-hidden="true"></i>
+          <span class="sr-only">展开答案</span>
         </button>
         <div class="faq-answer">${faq.answer}</div>
       `;
@@ -300,37 +346,30 @@ document.addEventListener('DOMContentLoaded', () => {
   if (aboutContainer && typeof AUTHOR !== 'undefined') {
     const a = AUTHOR;
     aboutContainer.innerHTML = `
-      <div class="text-center max-w-xl mx-auto">
-        <!-- 头像 Logo -->
-        <div class="w-24 h-24 mx-auto mb-4 rounded-2xl overflow-hidden shadow-lg bg-[var(--bg-card)] border border-[var(--border-card)] flex items-center justify-center p-3">
-          <img src="assets/logo.png" alt="${a.name}" class="w-full h-full object-contain" />
-        </div>
-        <h2 class="text-2xl font-bold text-[var(--text-primary)]">${a.name}</h2>
-        <p class="text-sm text-[var(--text-muted)] mt-1">${a.tagline}</p>
-        <p class="text-sm text-[var(--text-secondary)] leading-relaxed mt-5 max-w-md mx-auto">${a.bio}</p>
-
-        <!-- 社交链接 -->
-        <div class="flex items-center justify-center gap-3 mt-6">
-          ${a.links.map((l) => `
-            <a href="${l.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--bg-social)] border border-[var(--border-input)] text-[var(--text-secondary)] text-xs font-medium hover:bg-[var(--bg-social-hover)] hover:border-neon-blue hover:text-neon-blue transition-all duration-300">
-              <i class="${l.icon}"></i>${l.label}
-            </a>
-          `).join('')}
-        </div>
-
-        <!-- 技能条 -->
-        <div class="mt-8 text-left max-w-sm mx-auto space-y-4">
-          ${a.skills.map((s) => `
-            <div>
-              <div class="flex justify-between text-xs mb-1.5">
-                <span class="text-[var(--text-secondary)]">${s.name}</span>
-                <span class="text-[var(--text-muted)] font-mono">${s.level}%</span>
-              </div>
-              <div class="skill-bar-bg">
-                <div class="skill-bar-fill" data-width="${s.level}"></div>
-              </div>
-            </div>
-          `).join('')}
+      <div class="about-layout">
+        <aside class="about-profile">
+          <div class="about-logo">
+            <img src="assets/logo.png" alt="${a.name}" class="w-full h-full object-contain" />
+          </div>
+          <span class="section-number">Maintainer</span>
+          <h2>${a.name}</h2>
+          <p class="mt-2 text-sm">${a.tagline}</p>
+        </aside>
+        <div class="about-main">
+          <p class="text-sm leading-relaxed max-w-2xl">${a.bio}</p>
+          <div class="about-links mt-6">
+            ${a.links.map((l) => `
+              <a href="${l.url}" target="_blank" rel="noopener noreferrer">
+                ${l.label} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              </a>
+            `).join('')}
+          </div>
+          <div class="about-skills mt-9">
+            <p class="section-number mb-3">Technical focus</p>
+            <ul>
+              ${a.skills.map((s) => `<li><span>${s.name}</span><small>${s.level >= 80 ? '常用' : s.level >= 60 ? '熟悉' : '正在学习'}</small></li>`).join('')}
+            </ul>
+          </div>
         </div>
       </div>
     `;
@@ -453,11 +492,11 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.clipboard.writeText(input.value).then(() => {
       const orig = copyBtn.innerHTML;
       copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
-      copyBtn.classList.add('text-green-400', 'border-green-400/50', 'bg-green-400/10');
+      copyBtn.classList.add('copied');
       copyBtn.classList.remove('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
       setTimeout(() => {
         copyBtn.innerHTML = orig;
-        copyBtn.classList.remove('text-green-400', 'border-green-400/50', 'bg-green-400/10');
+        copyBtn.classList.remove('copied');
         copyBtn.classList.add('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
       }, 1200);
     }).catch(() => alert('复制失败，请手动复制'));
@@ -503,11 +542,11 @@ document.addEventListener('DOMContentLoaded', () => {
       navigator.clipboard.writeText(email).then(() => {
         const orig = this.innerHTML;
         this.innerHTML = '<i class="fa-solid fa-check mr-1"></i>已复制';
-        this.classList.add('text-green-400', 'border-green-400/50', 'bg-green-400/10');
+        this.classList.add('copied');
         this.classList.remove('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
         setTimeout(() => {
           this.innerHTML = orig;
-          this.classList.remove('text-green-400', 'border-green-400/50', 'bg-green-400/10');
+          this.classList.remove('copied');
           this.classList.add('text-neon-blue', 'border-neon-blue/30', 'bg-neon-blue/10');
         }, 1500);
       });

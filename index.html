@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="scroll-smooth" data-theme="dark">
+<html lang="zh-CN" class="scroll-smooth" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,9 +11,7 @@
       var saved = localStorage.getItem('theme');
       var theme = saved;
       if (!theme) {
-        theme = window.matchMedia('(prefers-color-scheme: light)').matches
-          ? 'light'
-          : 'dark';
+        theme = 'light';
       }
       document.documentElement.setAttribute('data-theme', theme);
     })();
@@ -22,7 +20,7 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 自定义样式 -->
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=7" />
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <!-- Google Fonts -->
@@ -39,7 +37,7 @@
             mono: ['JetBrains Mono', 'monospace'],
           },
           colors: {
-            neon: { blue: '#00d4ff', purple: '#7c3aed', cyan: '#06f7f7' },
+            neon: { blue: '#c05621', purple: '#7c3aed', cyan: '#06f7f7' },
           },
         },
       },
@@ -63,130 +61,165 @@
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-black focus:rounded-lg focus:outline-none focus:ring-2 focus:ring-neon-blue focus:ring-offset-2 focus:ring-offset-[var(--bg-body)]">跳到主要内容</a>
 
   <!-- 环境光晕 -->
-  <div class="ambient-glow--top-left"></div>
-  <div class="ambient-glow--bottom-right"></div>
 
-  <!-- ==================== 顶部导航栏（含标签页） ==================== -->
-  <header id="navbar" class="fixed top-0 inset-x-0 z-50">
-    <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2">
-      <!-- Logo -->
-      <a href="#" class="flex items-center gap-2.5 shrink-0">
-        <img src="assets/logo.png" alt="TraceDev 技术资源库 Logo" class="h-8 w-auto" />
-        <span class="text-base font-bold tracking-tight text-[var(--text-primary)] hidden sm:inline">TraceDev</span>
+  <!-- ==================== 应用壳层 ==================== -->
+  <div class="app-shell">
+    <aside class="tool-rail" aria-label="快捷工具栏">
+      <a href="#main-content" class="rail-logo" aria-label="TraceDev 首页" title="TraceDev 首页">
+        <img src="assets/logo.png" alt="" />
       </a>
+      <div class="rail-actions">
+        <button class="tab-btn rail-tab active" data-tab="videos" aria-label="教学视频" title="教学视频"><i class="fa-solid fa-play"></i></button>
+        <button class="tab-btn rail-tab" data-tab="store" aria-label="咸鱼店铺" title="咸鱼店铺"><i class="fa-solid fa-store"></i></button>
+        <button class="tab-btn rail-tab" data-tab="downloads" aria-label="资料下载" title="资料下载"><i class="fa-solid fa-folder-open"></i></button>
+        <button class="tab-btn rail-tab" data-tab="journal" aria-label="学习日志" title="学习日志"><i class="fa-solid fa-book-open"></i></button>
+        <button class="tab-btn rail-tab" data-tab="faq" aria-label="疑难解答" title="疑难解答"><i class="fa-solid fa-circle-question"></i></button>
+        <button class="tab-btn rail-tab" data-tab="about" aria-label="关于作者" title="关于作者"><i class="fa-solid fa-user"></i></button>
+      </div>
+      <div class="rail-actions rail-actions-bottom">
+        <button id="admin-btn" class="rail-icon-btn" aria-label="管理员登录" title="管理员登录"><i class="fa-solid fa-lock"></i></button>
+        <button id="theme-toggle" class="rail-icon-btn" aria-label="切换主题" title="切换主题"><i class="fa-regular fa-sun"></i></button>
+      </div>
+    </aside>
 
-      <!-- 桌面端：标签页导航 -->
-      <div class="tab-scroll hidden md:flex flex-1 items-center justify-center mx-2">
-        <button class="tab-btn active" data-tab="videos"><i class="fa-solid fa-play mr-1.5" aria-hidden="true"></i>教学视频</button>
-        <button class="tab-btn" data-tab="store"><i class="fa-solid fa-store mr-1.5" aria-hidden="true"></i>咸鱼店铺</button>
-        <button class="tab-btn" data-tab="downloads"><i class="fa-solid fa-download mr-1.5" aria-hidden="true"></i>资料下载</button>
-        <button class="tab-btn" data-tab="journal"><i class="fa-solid fa-book-open mr-1.5" aria-hidden="true"></i>学习日志</button>
-        <button class="tab-btn" data-tab="faq"><i class="fa-solid fa-circle-question mr-1.5" aria-hidden="true"></i>疑难解答</button>
-        <button class="tab-btn" data-tab="about"><i class="fa-solid fa-user mr-1.5" aria-hidden="true"></i>关于作者</button>
+    <aside class="section-sidebar" aria-label="资源分类导航">
+      <div class="sidebar-brand">
+        <strong>TraceDev</strong>
+        <span>技术资源库</span>
+      </div>
+      <div class="sidebar-heading"><span>Workspace</span><i class="fa-solid fa-chevron-up"></i></div>
+      <nav class="sidebar-nav">
+        <button class="tab-btn sidebar-tab active" data-tab="videos"><i class="fa-solid fa-film"></i><span>教学视频</span><small id="video-count">03</small></button>
+        <button class="tab-btn sidebar-tab" data-tab="downloads"><i class="fa-solid fa-folder-tree"></i><span>资料下载</span><small id="resource-count">05</small></button>
+        <button class="tab-btn sidebar-tab" data-tab="store"><i class="fa-solid fa-bag-shopping"></i><span>咸鱼店铺</span><small id="product-count">01</small></button>
+        <button class="tab-btn sidebar-tab" data-tab="journal"><i class="fa-solid fa-note-sticky"></i><span>学习日志</span></button>
+        <button class="tab-btn sidebar-tab" data-tab="faq"><i class="fa-solid fa-circle-question"></i><span>疑难解答</span></button>
+        <button class="tab-btn sidebar-tab" data-tab="about"><i class="fa-solid fa-address-card"></i><span>关于作者</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        <div><strong>系统正常</strong><small>内容已同步</small></div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header id="navbar" class="workspace-topbar">
+        <div class="topbar-title">
+          <button id="menu-btn" class="mobile-menu-toggle" aria-label="菜单" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
+          <div><span class="breadcrumb-muted">My workspace</span><strong>技术资源库</strong></div>
+        </div>
+        <div class="topbar-tools">
+          <label class="search-box" for="site-search"><i class="fa-solid fa-magnifying-glass"></i><input id="site-search" type="search" placeholder="搜索资源、教程或关键词" autocomplete="off" /></label>
+          <span class="topbar-icon" aria-hidden="true"><i class="fa-regular fa-bell"></i></span>
+          <div class="user-chip"><span class="user-avatar">T</span><span class="hidden sm:inline">Hi, TraceDev</span></div>
+        </div>
+      </header>
+
+      <div id="mobile-menu" class="md:hidden">
+        <div class="mobile-menu-inner">
+          <button class="tab-btn mobile-tab active" data-tab="videos">教学视频</button>
+          <button class="tab-btn mobile-tab" data-tab="downloads">资料下载</button>
+          <button class="tab-btn mobile-tab" data-tab="store">咸鱼店铺</button>
+          <button class="tab-btn mobile-tab" data-tab="journal">学习日志</button>
+          <button class="tab-btn mobile-tab" data-tab="faq">疑难解答</button>
+          <button class="tab-btn mobile-tab" data-tab="about">关于作者</button>
+        </div>
       </div>
 
-      <!-- 右区 -->
-      <div class="flex items-center gap-2 shrink-0">
-        <button id="admin-btn" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text-dim)] hover:text-neon-blue hover:bg-[var(--bg-social)] border border-transparent hover:border-[var(--border-default)] transition-all duration-300" aria-label="管理员登录" title="管理员登录">
-          <i class="fa-solid fa-lock text-xs"></i>
-        </button>
-        <button id="theme-toggle" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text-secondary)] hover:text-neon-blue hover:bg-[var(--bg-social)] border border-[var(--border-default)] transition-all duration-300" aria-label="切换主题">
-          <i class="fa-regular fa-sun"></i>
-        </button>
-        <button id="menu-btn" class="md:hidden text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-lg" aria-label="菜单" aria-expanded="false">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-      </div>
-    </nav>
+      <!-- ==================== 内容面板 ==================== -->
+      <main id="main-content" class="flex-1">
+        <!-- ─── 教学视频 ─── -->
+        <section id="panel-videos" class="tab-panel active dashboard-panel">
+          <div class="dashboard-heading">
+            <div class="section-header" data-section="01 / Videos">
+              <span class="section-number">01 / Videos</span>
+              <h2>教学视频</h2>
+              <p>嵌入式开发、单片机、STM32 等技术教程，从入门到进阶</p>
+            </div>
+            <button class="text-action tab-btn" data-tab="downloads">查看全部资料 <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
 
-    <!-- 移动端下拉菜单（含标签页 + 主题切换） -->
-    <div id="mobile-menu" class="md:hidden">
-      <div class="flex flex-col px-4 pb-4 pt-2 gap-1 text-sm font-medium text-[var(--text-secondary)]">
-        <button class="tab-btn mobile-tab active" data-tab="videos"><i class="fa-solid fa-play mr-2" aria-hidden="true"></i>教学视频</button>
-        <button class="tab-btn mobile-tab" data-tab="store"><i class="fa-solid fa-store mr-2" aria-hidden="true"></i>咸鱼店铺</button>
-        <button class="tab-btn mobile-tab" data-tab="downloads"><i class="fa-solid fa-download mr-2" aria-hidden="true"></i>资料下载</button>
-        <button class="tab-btn mobile-tab" data-tab="journal"><i class="fa-solid fa-book-open mr-2" aria-hidden="true"></i>学习日志</button>
-        <button class="tab-btn mobile-tab" data-tab="faq"><i class="fa-solid fa-circle-question mr-2" aria-hidden="true"></i>疑难解答</button>
-        <button class="tab-btn mobile-tab" data-tab="about"><i class="fa-solid fa-user mr-2" aria-hidden="true"></i>关于作者</button>
-      </div>
-    </div>
-  </header>
+          <div class="quick-access" aria-label="快速入口">
+            <div class="quick-access-title"><span>Quick access</span><small>常用入口</small></div>
+            <button class="quick-item tab-btn active" data-tab="videos"><span class="quick-icon quick-icon-blue"><i class="fa-solid fa-play"></i></span><span>教学视频</span></button>
+            <button class="quick-item tab-btn" data-tab="downloads"><span class="quick-icon quick-icon-green"><i class="fa-solid fa-folder-open"></i></span><span>资料下载</span></button>
+            <button class="quick-item tab-btn" data-tab="store"><span class="quick-icon quick-icon-orange"><i class="fa-solid fa-bag-shopping"></i></span><span>开发板</span></button>
+            <button class="quick-item tab-btn" data-tab="journal"><span class="quick-icon quick-icon-purple"><i class="fa-solid fa-note-sticky"></i></span><span>学习日志</span></button>
+            <button class="quick-item tab-btn" data-tab="about"><span class="quick-icon quick-icon-cyan"><i class="fa-solid fa-user"></i></span><span>关于作者</span></button>
+          </div>
 
-  <!-- ==================== 内容面板 ==================== -->
-  <main id="main-content" class="flex-1 pt-16">
-
-    <!-- ─── 📺 教学视频 ─── -->
-    <section id="panel-videos" class="tab-panel active py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
-      <div class="section-header">
-        <h2>📺 教学视频</h2>
-        <p>嵌入式开发、单片机、STM32 等技术教程，从入门到进阶</p>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="video-grid">
-        <!-- 由 JS 动态填充 -->
-      </div>
-    </section>
+          <div class="dashboard-grid">
+            <div class="video-library">
+              <div class="content-toolbar"><div><h3>最近更新</h3><span>按最近发布的教程排序</span></div><span class="toolbar-count">3 个视频</span></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="video-grid">
+                <!-- 由 JS 动态填充 -->
+              </div>
+            </div>
+            <aside class="activity-panel" aria-label="最近动态">
+              <div class="panel-mini-heading"><h3>最近动态</h3><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></div>
+              <div class="activity-list">
+                <div class="activity-item"><span class="activity-marker blue"></span><div><strong>新增教学视频</strong><p>立创EDA PCB设计</p><small>2025-07</small></div></div>
+                <div class="activity-item"><span class="activity-marker green"></span><div><strong>资料库已更新</strong><p>新增 4 个 PCB 工程文件</p><small>2025-05</small></div></div>
+                <div class="activity-item"><span class="activity-marker orange"></span><div><strong>店铺商品上新</strong><p>MSPM0 电赛拓展板</p><small>持续更新</small></div></div>
+              </div>
+              <div class="storage-summary"><div class="storage-summary-head"><span>资源状态</span><strong>已整理</strong></div><div class="storage-bar"><span></span></div><p>视频、工程文件与学习笔记集中归档</p></div>
+            </aside>
+          </div>
+        </section>
 
     <!-- ─── 🏪 咸鱼店铺 ─── -->
     <section id="panel-store" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
-      <div class="section-header">
-        <h2>🏪 咸鱼店铺</h2>
+      <div class="section-header" data-section="02 / Store">
+        <span class="section-number">02 / Store</span>
+        <h2>咸鱼店铺</h2>
         <p>开发板、模块、工具 — 物美价廉的学生福利</p>
       </div>
-      <div class="flex flex-wrap justify-center gap-5" id="product-grid">
+      <div class="grid grid-cols-1 gap-5" id="product-grid">
         <!-- 由 JS 动态填充 -->
       </div>
     </section>
 
     <!-- ─── 📦 资料下载 ─── -->
     <section id="panel-downloads" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
-      <div class="section-header">
-        <h2>📦 资料下载</h2>
+      <div class="section-header" data-section="03 / Downloads">
+        <span class="section-number">03 / Downloads</span>
+        <h2>资料下载</h2>
         <p>源码工程、PCB 文件、学习资料 — 分类查找，快速下载</p>
       </div>
-      <div class="flex flex-col lg:flex-row gap-6">
-        <!-- 左侧：下拉分类 -->
-        <div class="lg:w-48 shrink-0">
-          <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-2 font-medium">分类筛选</label>
-          <div class="relative">
-            <select id="category-select" class="w-full appearance-none bg-[var(--bg-card)] border border-[var(--border-card)] text-[var(--text-primary)] rounded-lg px-4 py-2.5 pr-10 text-sm font-medium focus:outline-none focus:border-neon-blue/50 cursor-pointer transition-colors">
-              <!-- 由 JS 动态生成 -->
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--text-muted)]">
-              <i class="fa-solid fa-chevron-down text-xs"></i>
-            </div>
-          </div>
+      <div>
+        <div class="flex items-center gap-2 mb-5 flex-wrap">
+          <span class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] mr-1">分类筛选</span>
+          <div id="category-filter" class="flex flex-wrap gap-2"></div>
         </div>
-        <!-- 右侧：卡片网格 -->
-        <div class="flex-1 min-w-0">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="resource-grid">
-            <!-- 由 JS 动态填充 -->
-          </div>
+        <div class="resource-row-list" id="resource-grid">
+          <!-- 由 JS 动态填充 -->
         </div>
       </div>
     </section>
 
     <!-- ─── 📖 学习日志 ─── -->
     <section id="panel-journal" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full">
-      <div class="section-header">
-        <h2>📖 学习日志</h2>
+      <div class="section-header" data-section="04 / Journal">
+        <span class="section-number">04 / Journal</span>
+        <h2>学习日志</h2>
         <p>记录学习过程 · 分享技术心得 · 巩固知识体系</p>
       </div>
 
       <!-- 管理员操作栏（仅登录后可见） -->
       <div id="journal-admin-bar" class="hidden mb-6">
-        <div class="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-card)]">
+        <div class="flex items-center justify-between flex-wrap gap-3 py-3 border-y border-[var(--border-card)]">
           <div class="flex items-center gap-2 text-sm">
             <i class="fa-solid fa-user-shield text-neon-blue"></i>
             <span class="text-[var(--text-secondary)]">管理员模式 · 编辑后自动提交到 GitHub · <span id="admin-repo-name" class="text-neon-blue font-mono text-xs"></span></span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <button id="btn-new-post" class="px-4 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+            <button id="btn-new-post" class="btn-primary">
               <i class="fa-solid fa-plus mr-1.5"></i>新建日志
             </button>
-            <button id="btn-ai-settings" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-purple-400 transition-colors" title="AI 设置">
+            <button id="btn-ai-settings" class="btn-secondary" title="AI 设置">
               <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>AI 设置
             </button>
-            <button id="btn-logout" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-red-400 transition-colors">
+            <button id="btn-logout" class="btn-danger">
               <i class="fa-solid fa-right-from-bracket mr-1.5"></i>退出
             </button>
           </div>
@@ -195,7 +228,7 @@
 
       <!-- 分类筛选 -->
       <div class="flex items-center gap-2 mb-6 overflow-x-auto" id="journal-tags-filter">
-        <button class="journal-tag-btn active px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer bg-neon-blue/10 border-neon-blue/30 text-neon-blue" data-tag="all">
+        <button class="journal-tag-btn active" data-tag="all">
           全部
         </button>
       </div>
@@ -210,37 +243,11 @@
       </div>
     </section>
 
-    <!-- ─── 📖 学习日志 ─── -->
-    <section id="panel-journal" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full">
-      <div class="section-header">
-        <h2>📖 学习日志</h2>
-        <p>记录学习过程 · 分享技术心得 · 巩固知识体系</p>
-      </div>
-      <div id="journal-admin-bar" class="hidden mb-6">
-        <div class="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-card)]">
-          <div class="flex items-center gap-2 text-sm">
-            <i class="fa-solid fa-user-shield text-neon-blue"></i>
-            <span class="text-[var(--text-secondary)]">管理员模式 · <span id="admin-repo-name" class="text-neon-blue font-mono text-xs"></span></span>
-          </div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <button id="btn-new-post" class="px-4 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95"><i class="fa-solid fa-plus mr-1.5"></i>新建日志</button>
-            <button id="btn-ai-settings" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-purple-400 transition-colors" title="AI 设置"><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>AI 设置</button>
-            <button id="btn-logout" class="px-3 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-red-400 transition-colors"><i class="fa-solid fa-right-from-bracket mr-1.5"></i>退出</button>
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 mb-6 overflow-x-auto" id="journal-tags-filter">
-        <button class="journal-tag-btn active px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer bg-neon-blue/10 border border-neon-blue/30 text-neon-blue" data-tag="all">全部</button>
-      </div>
-      <div class="space-y-5" id="journal-list">
-        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></div><p class="empty-title">暂无学习日志</p><p class="empty-desc">学习日志即将上线</p></div>
-      </div>
-    </section>
-
-    <!-- ─── ❓ 疑难解答 ─── -->
+        <!-- ─── ❓ 疑难解答 ─── -->
     <section id="panel-faq" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto w-full">
-      <div class="section-header">
-        <h2>❓ 疑难解答</h2>
+      <div class="section-header" data-section="05 / FAQ">
+        <span class="section-number">05 / FAQ</span>
+        <h2>疑难解答</h2>
         <p>资源下载、开发环境、课程学习 — 常见问题一站解答</p>
       </div>
       <div id="faq-container" class="space-y-3">
@@ -250,8 +257,9 @@
 
     <!-- ─── 👤 关于作者 ─── -->
     <section id="panel-about" class="tab-panel py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto w-full">
-      <div class="section-header">
-        <h2>👤 关于作者</h2>
+      <div class="section-header" data-section="06 / About">
+        <span class="section-number">06 / About</span>
+        <h2>关于作者</h2>
         <p>一名热爱技术与分享的嵌入式工程师</p>
       </div>
       <div id="about-container">
@@ -259,24 +267,26 @@
       </div>
     </section>
 
-  </main>
+      </main>
 
-  <!-- ==================== 页脚 ==================== -->
-  <footer class="py-8 px-4 mt-10">
-    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
-      <p>&copy; 2024 TraceDev. All rights reserved.</p>
-      <p><span class="text-[var(--text-dim)]">备案号：</span><a href="#" class="hover:text-neon-blue transition-colors">鄂ICP备2024XXXXXXXX号-X</a></p>
-      <p><i class="fa-solid fa-envelope mr-1" aria-hidden="true"></i><button class="email-link hover:text-neon-blue transition-colors bg-transparent border-0 cursor-pointer text-xs text-[var(--text-muted)]" data-email="3318234704@qq.com">3318234704@qq.com</button></p>
+      <!-- ==================== 页脚 ==================== -->
+      <footer class="py-8 px-4">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
+          <p>&copy; <span id="footer-year">2026</span> TraceDev. All rights reserved.</p>
+          <p><span class="text-[var(--text-dim)]">备案号：</span><a href="#" class="hover:text-neon-blue transition-colors">鄂ICP备2024XXXXXXXX号-X</a></p>
+          <p><i class="fa-solid fa-envelope mr-1" aria-hidden="true"></i><button class="email-link hover:text-neon-blue transition-colors bg-transparent border-0 cursor-pointer text-xs text-[var(--text-muted)]" data-email="3318234704@qq.com">3318234704@qq.com</button></p>
+        </div>
+        <div class="max-w-6xl mx-auto text-center mt-4 text-xs text-[var(--text-dim)]">
+          访客 <span id="busuanzi_value_site_uv"></span> · 访问量 <span id="busuanzi_value_site_pv"></span>
+        </div>
+      </footer>
     </div>
-      <div class="max-w-6xl mx-auto text-center mt-4 text-xs text-[var(--text-dim)]">
-      访客 <span id="busuanzi_value_site_uv"></span> · 访问量 <span id="busuanzi_value_site_pv"></span>
-    </div>
-  </footer>
+  </div>
 
   <!-- ==================== 模态框（资料下载） ==================== -->
   <div id="download-modal" class="fixed inset-0 z-[100] flex items-center justify-center px-4 hidden">
-    <div id="modal-overlay" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <div id="modal-overlay" class="absolute inset-0 bg-black/60"></div>
+    <div class="relative w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-input)] rounded-lg p-6 sm:p-8">
       <button id="modal-close" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl" aria-label="关闭">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -286,21 +296,21 @@
           <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">百度网盘链接</label>
           <div class="flex items-center gap-2">
             <input id="modal-link" type="text" readonly value="https://pan.baidu.com/s/xxx" class="modal-input flex-1 bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:outline-none" />
-            <button class="copy-btn flex-shrink-0 px-3 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-copy-target="modal-link" title="复制链接"><i class="fa-regular fa-copy"></i></button>
+            <button class="copy-btn btn-secondary flex-shrink-0" data-copy-target="modal-link" title="复制链接"><i class="fa-regular fa-copy"></i><span class="hidden sm:inline">复制</span></button>
           </div>
         </div>
         <div>
           <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">提取码</label>
           <div class="flex items-center gap-2">
             <input id="modal-code" type="text" readonly value="提取码: abcd" class="modal-input flex-1 bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:outline-none" />
-            <button class="copy-btn flex-shrink-0 px-3 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-copy-target="modal-code" title="复制提取码"><i class="fa-regular fa-copy"></i></button>
+            <button class="copy-btn btn-secondary flex-shrink-0" data-copy-target="modal-code" title="复制提取码"><i class="fa-regular fa-copy"></i><span class="hidden sm:inline">复制</span></button>
           </div>
         </div>
         <div>
           <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">解压密码</label>
           <div class="flex items-center gap-2">
             <input id="modal-password" type="text" readonly value="解压密码: techhub2024" class="modal-input flex-1 bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:outline-none" />
-            <button class="copy-btn flex-shrink-0 px-3 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-copy-target="modal-password" title="复制解压密码"><i class="fa-regular fa-copy"></i></button>
+            <button class="copy-btn btn-secondary flex-shrink-0" data-copy-target="modal-password" title="复制解压密码"><i class="fa-regular fa-copy"></i><span class="hidden sm:inline">复制</span></button>
           </div>
         </div>
       </div>
@@ -309,8 +319,8 @@
 
   <!-- ==================== 登录模态框 ==================== -->
   <div id="login-modal" class="fixed inset-0 z-[110] flex items-center justify-center px-4 hidden">
-    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="login-overlay"></div>
-    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <div class="absolute inset-0 bg-black/60" id="login-overlay"></div>
+    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-lg p-6 sm:p-8">
       <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-login" aria-label="关闭">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -322,7 +332,7 @@
           <input id="login-password" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue" placeholder="请输入管理员密码" autocomplete="current-password" />
         </div>
         <p id="login-error" class="text-xs text-red-400 hidden"></p>
-        <button id="btn-login-submit" class="w-full py-2.5 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+        <button id="btn-login-submit" class="btn-primary w-full">
           <i class="fa-solid fa-right-to-bracket mr-1.5"></i>登录
         </button>
       </div>
@@ -331,8 +341,8 @@
 
   <!-- ==================== AI 设置模态框 ==================== -->
   <div id="ai-settings-modal" class="fixed inset-0 z-[130] flex items-center justify-center px-4 hidden">
-    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="ai-settings-overlay"></div>
-    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <div class="absolute inset-0 bg-black/60" id="ai-settings-overlay"></div>
+    <div class="relative w-full max-w-sm bg-[var(--bg-card)] border border-[var(--border-input)] rounded-lg p-6 sm:p-8">
       <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-ai-settings" aria-label="关闭">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -341,16 +351,16 @@
       <div class="space-y-4">
         <div>
           <label class="block text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1.5">DeepSeek API Key</label>
-          <input id="ai-api-key" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-purple-400 font-mono" placeholder="sk-xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+          <input id="ai-api-key" type="password" class="w-full bg-[var(--bg-input)] border border-[var(--border-input)] rounded-lg px-4 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-neon-blue font-mono" placeholder="sk-xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
         </div>
         <div class="p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-subtle)]">
           <p class="text-xs text-[var(--text-muted)] leading-relaxed">
-            💡 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" class="text-purple-400 underline">获取 DeepSeek API Key</a>（价格极低，新用户送额度）<br/>
+            💡 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" class="text-neon-blue underline">获取 DeepSeek API Key</a>（价格极低，新用户送额度）<br/>
             Key 加密存储在你的浏览器本地，仅用于调用 AI 整理功能。
           </p>
         </div>
-        <p id="ai-settings-msg" class="text-xs text-green-400 hidden"></p>
-        <button id="btn-ai-save-key" class="w-full py-2.5 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors active:scale-95">
+        <p id="ai-settings-msg" class="text-xs text-[var(--success)] hidden"></p>
+        <button id="btn-ai-save-key" class="btn-primary w-full">
           <i class="fa-solid fa-check mr-1.5"></i>保存
         </button>
       </div>
@@ -359,8 +369,8 @@
 
   <!-- ==================== 文章编辑器模态框 ==================== -->
   <div id="editor-modal" class="fixed inset-0 z-[120] flex items-start justify-center px-4 pt-12 pb-12 overflow-y-auto hidden">
-    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="editor-overlay"></div>
-    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <div class="absolute inset-0 bg-black/60" id="editor-overlay"></div>
+    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-lg p-6 sm:p-8">
       <div class="flex items-center justify-between mb-6">
         <h3 id="editor-title-label" class="text-xl font-bold text-[var(--text-primary)]">新建学习日志</h3>
         <button class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-editor" aria-label="关闭">
@@ -438,15 +448,15 @@ https://example.com/ref2"></textarea>
 
         <!-- 操作按钮 -->
         <div class="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
-          <button id="btn-delete-post" class="px-4 py-2 rounded-lg bg-red-400/10 border border-red-400/30 text-red-400 text-sm hover:bg-red-400/20 transition-colors hidden">
+            <button id="btn-delete-post" class="btn-danger hidden">
             <i class="fa-solid fa-trash mr-1.5"></i>删除
           </button>
           <div class="flex items-center gap-3 ml-auto">
-            <button class="close-editor px-4 py-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-secondary)] text-sm hover:text-[var(--text-primary)] transition-colors">取消</button>
-            <button id="btn-ai-organize" class="px-4 py-2 rounded-lg bg-purple-500/15 border border-purple-400/30 text-purple-400 text-sm font-medium hover:bg-purple-500/25 transition-colors active:scale-95" title="AI 整理排版">
+            <button class="close-editor btn-secondary">取消</button>
+            <button id="btn-ai-organize" class="btn-secondary" title="AI 整理排版">
               <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>AI 整理
             </button>
-            <button id="btn-save-post" class="px-6 py-2 rounded-lg bg-neon-blue text-black text-sm font-semibold hover:bg-neon-blue/90 transition-colors active:scale-95">
+            <button id="btn-save-post" class="btn-primary">
               <i class="fa-solid fa-floppy-disk mr-1.5"></i>保存发布
             </button>
           </div>
@@ -457,8 +467,8 @@ https://example.com/ref2"></textarea>
 
   <!-- ==================== 文章详情模态框 ==================== -->
   <div id="post-detail-modal" class="fixed inset-0 z-[115] flex items-start justify-center px-4 pt-12 pb-12 overflow-y-auto hidden">
-    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" id="post-detail-overlay"></div>
-    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <div class="absolute inset-0 bg-black/60" id="post-detail-overlay"></div>
+    <div class="relative w-full max-w-3xl bg-[var(--bg-card)] border border-[var(--border-input)] rounded-lg p-6 sm:p-8">
       <button class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl close-post-detail" aria-label="关闭">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -472,9 +482,9 @@ https://example.com/ref2"></textarea>
   <button id="back-to-top" aria-label="回到顶部"><i class="fa-solid fa-arrow-up"></i></button>
 
   <!-- ==================== JavaScript ==================== -->
-  <script src="js/data.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/journal.js?v=9"></script>
+  <script src="js/data.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
+  <script src="js/journal.js?v=11"></script>
   <!-- 不蒜子访问统计 -->
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 

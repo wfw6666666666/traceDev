@@ -534,10 +534,10 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
     const tagSet = new Set();
     posts.forEach(p => (p.tags || []).forEach(t => tagSet.add(t)));
 
-    let html = '<button class="journal-tag-btn active px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="all">全部</button>';
-    cats.forEach(cat => html += `<button class="journal-tag-btn px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="cat:${escapeHtml(cat)}">${escapeHtml(cat)}</button>`);
+    let html = '<button class="journal-tag-btn active" data-tag="all">全部</button>';
+    cats.forEach(cat => html += `<button class="journal-tag-btn" data-tag="cat:${escapeHtml(cat)}">${escapeHtml(cat)}</button>`);
     if (cats.size > 0 && tagSet.size > 0) html += '<span class="text-[var(--text-dim)] mx-1">|</span>';
-    tagSet.forEach(tag => html += `<button class="journal-tag-btn px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`);
+    tagSet.forEach(tag => html += `<button class="journal-tag-btn" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`);
     container.innerHTML = html;
     container.querySelectorAll('.journal-tag-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -575,21 +575,19 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
         return `<img src="${escapeHtml(src)}" alt="图片" loading="lazy" />`;
       }).join('');
       const adminBtns = isAdmin ? `
-        <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
-          <button class="edit-post-btn px-2.5 py-1 rounded-md bg-[var(--bg-input)] border border-[var(--border-input)] text-[var(--text-muted)] text-xs hover:text-neon-blue hover:border-neon-blue/50 transition-colors" data-post-id="${p.id}" title="编辑">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
+        <div class="journal-admin-actions" onclick="event.stopPropagation()">
+          <button class="edit-post-btn btn-quiet" data-post-id="${p.id}" title="编辑">编辑</button>
         </div>` : '';
       return `<article class="journal-card" data-post-id="${p.id}">
         <div class="journal-card-header"><h3 class="journal-card-title">${escapeHtml(p.title)}</h3>${adminBtns}</div>
         <div class="journal-card-meta">
-          <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(p.createdAt)}</span>
-          ${p.category ? `<span><i class="fa-regular fa-folder"></i> ${escapeHtml(p.category)}</span>` : ''}
-          ${(p.files || []).length > 0 ? `<span><i class="fa-solid fa-paperclip"></i> ${p.files.length} 个附件</span>` : ''}
-          ${(p.images || []).length > 0 ? `<span><i class="fa-solid fa-image"></i> ${p.images.length} 张图片</span>` : ''}
+          <span>${escapeHtml(p.createdAt)}</span>
+          ${p.category ? `<span>${escapeHtml(p.category)}</span>` : ''}
+          ${(p.files || []).length > 0 ? `<span>${p.files.length} 个附件</span>` : ''}
+          ${(p.images || []).length > 0 ? `<span>${p.images.length} 张图片</span>` : ''}
         </div>
         <div class="journal-card-excerpt">${escapeHtml(excerpt)}</div>
-        ${tagHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${tagHtml}</div>` : ''}
+        ${tagHtml ? `<div class="journal-tags">${tagHtml}</div>` : ''}
         ${imageHtml ? `<div class="journal-card-images">${imageHtml}</div>` : ''}
       </article>`;
     }).join('');
@@ -633,15 +631,14 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
     content.innerHTML = `<div class="post-detail-header">
       <h2>${escapeHtml(post.title)}</h2>
       <div class="post-detail-meta">
-        <span><i class="fa-regular fa-calendar"></i> ${escapeHtml(post.createdAt)}</span>
-        ${post.category ? `<span><i class="fa-regular fa-folder"></i> ${escapeHtml(post.category)}</span>` : ''}
-        <span><i class="fa-regular fa-clock"></i> 更新于 ${escapeHtml(post.updatedAt)}</span>
-      </div>${tagHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${tagHtml}</div>` : ''}
+        <span>${escapeHtml(post.createdAt)}</span>
+        ${post.category ? `<span>${escapeHtml(post.category)}</span>` : ''}
+        <span>更新于 ${escapeHtml(post.updatedAt)}</span>
+      </div>${tagHtml ? `<div class="journal-tags mt-3">${tagHtml}</div>` : ''}
     </div>${imageHtml}${fileHtml}
     <div class="post-detail-body">${simpleMarkdown(post.content || '')}</div>${linkHtml}
     ${isAdmin ? `<div class="mt-8 pt-4 border-t border-[var(--border-default)] flex gap-3">
-      <button class="edit-post-from-detail px-4 py-2 rounded-lg bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-sm hover:bg-neon-blue/20 transition-colors" data-post-id="${post.id}">
-        <i class="fa-solid fa-pen-to-square mr-1.5"></i>编辑</button>
+      <button class="edit-post-from-detail btn-secondary" data-post-id="${post.id}">编辑</button>
     </div>` : ''}`;
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -767,7 +764,7 @@ ${doneImages.length > 0 ? '\n已上传图片：\n' + doneImages.map((img, i) => 
             <span class="flex items-center gap-2 text-[var(--text-secondary)] truncate">
               <i class="fa-solid fa-file-lines text-[var(--text-dim)]"></i>
               <span class="truncate">${escapeHtml(item.original_name || item.filename || '文件')}</span>
-              ${item.done ? '<span class="text-xs text-green-400">✓</span>' : '<span class="text-xs text-[var(--text-dim)]">上传中...</span>'}
+              ${item.done ? '<span class="text-xs text-[var(--success)]">✓</span>' : '<span class="text-xs text-[var(--text-dim)]">上传中...</span>'}
             </span>
             <span class="remove-file" data-i="${i}"><i class="fa-solid fa-xmark"></i></span>
           </div>`).join('');
